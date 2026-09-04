@@ -29,8 +29,8 @@ Ensure that doors remain in their natural state and never close or lock themselv
 | **Engine** | Unreal Engine 5.5.4 (`dw1-pc-256181-shipping-patch2-all-CL-256181`) |
 | **Developer** | Rebel Wolves Sp. z o.o. |
 | **Executable** | `game/Dawnwalker/Binaries/Win64/Dawnwalker.exe` (`Dawnwalker-Win64-Shipping.exe`) |
-| **Runtime Loader** | UE4SS v3.0.1 (Experimental UE 5.5 build) loaded via `dwmapi.dll` |
-| **Loader Profile** | Safe mode: `GuiConsoleEnabled=0`, `ConsoleEnabled=0`, `bUseUObjectArrayCache=false` |
+| **Runtime Loader** | UE4SS v3.0.1-1111 (Dawnwalker Compatibility Release / Mod #18) loaded via `dwmapi.dll` |
+| **Loader Profile** | Game-tuned with `VTableLayout.ini` (`LoadMap` override at `0x4F0`), custom `FName` and `ProcessLocalScriptFunction` signatures |
 | **Active Mod Location** | `mods/OpenDoors/scripts/main.lua` (linked to `game/Dawnwalker/Binaries/Win64/ue4ss/Mods/OpenDoors`) |
 | **Door Utility Library**| `DogwoodBlueprintFunctionLibrary` |
 | **Door Triggers** | `DoorTrigger`, `SecondWingDoorTrigger` |

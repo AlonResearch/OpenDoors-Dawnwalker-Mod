@@ -14,6 +14,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Verify door push-to-open responsiveness during active combat.
 - Standalone release package script for players.
 
+## [0.2.3] - 2026-09-04
+
+### Added
+- **Integration of Dawnwalker-Specific UE4SS (Mod #18)**:
+  - Deployed community-verified UE4SS v3.0.1 package specifically calibrated for *The Blood of Dawnwalker*.
+  - Configured `ue4ss/VTableLayout.ini` with narrow `UEngine::LoadMap` offset override at `0x4F0`.
+  - Added build-tested signatures for `FName_Constructor` and `ProcessLocalScriptFunction`.
+  - Linked `mods/OpenDoors` to `game/Dawnwalker/Binaries/Win64/ue4ss/Mods/OpenDoors` via directory junction.
+  - Enabled `OpenDoors : 1` in `mods.txt` and `mods.json`.
+
+### Fixed
+- **Startup Access Violation (`0xc0000005`)**:
+  - Eliminated the startup crash previously caused by generic/uncalibrated reflection scanners by deploying the official game-tuned compatibility framework. Verified complete startup, object construction, and mod initialization in `UE4SS.log`.
+
 ---
 
 ## [0.2.2] - 2026-09-04
