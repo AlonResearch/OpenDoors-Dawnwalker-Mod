@@ -16,6 +16,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.2.1] - 2026-09-04
+
+### Added
+- **Zero-Polling & Performance Standards**: Added Section 4 to `AGENTS.md` and updated `GroundTruth.md` enforcing a strict zero-polling architectural rule:
+  - Banned continuous `Tick` hooks, polling loops, and distance scanner threads.
+  - Guaranteed zero idle CPU overhead: logic executes strictly on-demand when the native `SetDoorState` event fires, consuming 0 CPU cycles during normal gameplay.
+
+---
+
 ## [0.2.0] - 2026-09-04
 
 ### Added

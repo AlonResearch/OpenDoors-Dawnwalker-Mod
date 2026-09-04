@@ -43,3 +43,11 @@ Minimal, essential operational guidelines for AI agents working in the **Open Do
   - Hook functions by symbolic name (`FName`) or manipulate base component properties rather than patching compiled code.
 - **Root-Level Archetype Target**: Target the master/parent door and encounter classes (e.g. `BP_DoorBase` or `ARebelDoor`) so all derived instances across the entire game world inherit the behavior naturally without per-level overrides.
 - **Non-Destructive Integrity**: Never overwrite, replace, or delete original game files.
+
+---
+
+## 4. Zero-Polling & Performance Rule (Zero Idle Overhead)
+
+- **Zero Background Watchers**: Never implement `Tick` hooks, continuous distance scanners, or polling loops (`while true`, periodic timers) checking for actors or doors.
+- **Strictly Reactive Event-Driven**: Mod logic must execute **only** when the game's native engine events fire (e.g. discrete calls to `SetDoorState`).
+- **Zero Idle CPU Footprint**: When no door event is occurring, the mod consumes **0 CPU cycles** and has zero impact on frame rate or game performance.

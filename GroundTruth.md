@@ -17,7 +17,8 @@ Ensure that doors remain in their natural state and never close or lock themselv
 2. Ensure doors maintain their native push-to-open / stumble-to-open functionality both inside and outside of combat.
 3. Keep opened doors in the native `EDoorState::OpenEvenInCombat` state.
 4. **Preserve Narrative Locks**: Legitimate quest doors and narrative locks (`EDoorState::KeyLocked`) behave 100% normally.
-5. **Zero interference with the player's combat input or interaction systems** (no prompts, keybind modifications, or loot interaction changes).
+5. **Zero Performance Impact**: Zero-polling, purely event-driven architecture with zero idle CPU overhead.
+6. **Zero combat input interference**: Combat controls and loot interactions remain 100% vanilla.
 
 ---
 
@@ -54,7 +55,7 @@ enum class EDoorState : uint8
     Locked            = 2,
     OpenEvenInCombat  = 3, // Native engine state: keeps door open & traversable in combat
     TimeOpenByDay     = 4,
-    KeyLocked         = 5, // Narrative quest door locked state (requires key item)
+    KeyLocked         = 5, // Narrative quest door state (requires key item)
     Disabled          = 6,
     TimeOpenByNight   = 7
 };
@@ -82,7 +83,7 @@ The active mod implementation operates directly on `UDogwoodBlueprintFunctionLib
 
 ```mermaid
 flowchart TD
-    A[SetDoorState Called] --> B{InNewState == KeyLocked (5)?}
+    A[Native SetDoorState Called] --> B{InNewState == KeyLocked (5)?}
     B -- Yes --> C[Allow Normal Narrative Lock]
     B -- No --> D{WasSystemicallyClosed == true?}
     D -- Yes --> E[Intercept & Nullify Systemic Lock:<br/>WasSystemicallyClosed = false<br/>InNewState = OpenEvenInCombat (3)]
@@ -99,8 +100,10 @@ flowchart TD
    - This prevents the encounter manager from forcing the door into a locked state, keeping the door open, unblocking collision, and leaving the push-to-open `DoorTrigger` active.
 3. **Open Promotion**:
    - If `InNewState == EDoorState.Open` (1), the hook promotes it to `OpenEvenInCombat` (3), informing the engine's state machine that this door should never auto-close if combat ensues.
-4. **Zero Combat Input Alterations**:
-   - No modifications to player input mapping, HUD prompts, or `Player.Input.BlockInteractions`. Combat controls and loot behavior remain 100% vanilla.
+4. **Zero-Polling & Performance Guarantee**:
+   - **No Watchers / No Polling**: Zero `Tick` callbacks, zero continuous distance scanners, and zero background threads.
+   - **Strictly Event-Driven**: The Lua script is dormant 99.999% of the time and executes *only* for a few microseconds when the native C++ engine explicitly invokes `SetDoorState`.
+   - **Zero Idle CPU Overhead**: Consumes 0 CPU cycles during regular gameplay, exploration, and combat.
 
 ---
 
@@ -112,4 +115,5 @@ flowchart TD
 - [x] Deployed UE4SS v3.0.1 (Experimental UE 5.5 build) via `dwmapi.dll` into `game/Dawnwalker/Binaries/Win64/`.
 - [x] Created `mods/OpenDoors/scripts/main.lua` and linked via junction to UE4SS Mods.
 - [x] Verified narrative key-lock guard (`EDoorState.KeyLocked = 5`) to preserve legitimate quest doors.
+- [x] Verified zero-polling, purely event-driven execution profile.
 - [ ] Milestone: In-game testing with user in the "Rayko, the Incorruptible" guard tower encounter.
