@@ -81,15 +81,15 @@ Even if you pushed the door open yourself and no guard bolted it shut, you are a
 
 ```mermaid
 flowchart TD
-    A[Door in World: Naturally Closed] -->|Player approaches & pushes open| B[SetDoorState: Open / OnApproachTrigger]
-    B --> C{State == KeyLocked?}
-    C -- Yes --> D[Preserve Narrative Lock 100%]
-    C -- No --> E[Promote to OpenEvenInCombat (1)<br/>bInForcedOpen = true]
-    E --> F[Player Crosses Threshold]
-    F --> G[Chaos Physics Neutralization:<br/>• Move barrier 500m underground<br/>• Collapse extents to 0,0,0<br/>• Strip collision profile to NoCollision<br/>• Door leaf Mesh ignores ECC_Pawn]
-    G --> H[Encounter Starts:<br/>Game attempts systemic lock]
-    H --> I[Mod Event Hook Intercepts:<br/>Redirects state to OpenEvenInCombat<br/>Clears WasSystemicallyClosed]
-    I --> J[Doorway Remains 100% Passable]
+    A["Door in World: Naturally Closed"] -->|Player approaches & pushes open| B["SetDoorState: Open / OnApproachTrigger"]
+    B --> C{"State == KeyLocked?"}
+    C -->|Yes| D["Preserve Narrative Lock 100%"]
+    C -->|No| E["Promote to OpenEvenInCombat (1)<br/>bInForcedOpen = true"]
+    E --> F["Player Crosses Threshold"]
+    F --> G["Chaos Physics Neutralization:<br/>• Move barrier 500m underground<br/>• Collapse extents to 0, 0, 0<br/>• Strip collision profile to NoCollision<br/>• Door leaf Mesh ignores ECC_Pawn"]
+    G --> H["Encounter Starts:<br/>Game attempts systemic lock"]
+    H --> I["Mod Event Hook Intercepts:<br/>Redirects state to OpenEvenInCombat<br/>Clears WasSystemicallyClosed"]
+    I --> J["Doorway Remains 100% Passable"]
 ```
 
 ### Architecture Highlights:

@@ -77,16 +77,16 @@ The active mod implementation operates on the **Complete Reactive Chaos Physics 
  
 ```mermaid
 flowchart TD
-    A[Door in World: Closed & Untouched] -->|Player approaches & pushes open| B[SetDoorState: Open / OnApproachTrigger]
-    B --> C{State == KeyLocked?}
-    C -- Yes --> D[Preserve Narrative Lock 100%]
-    C -- No --> E[Promote to OpenEvenInCombat (1)<br/>bInForcedOpen = true]
-    E --> F[Player Crosses Threshold / TraversalAreaTrigger]
-    F --> G[Active Engine Chaos Physics Neutralization:<br/>K2_SetRelativeLocation -> Z = -50000.0<br/>SetBoxExtent -> 0, 0, 0<br/>SetCollisionProfileName -> NoCollision<br/>SetCollisionEnabled -> 0<br/>SetCollisionResponseToAllChannels -> 0<br/>Door Leaf Mesh -> Ignore ECC_Pawn]
-    G --> H[Encounter Engages & Attempts Closure:<br/>SetDoorState -> Locked (2) & WasSystemicallyClosed]
-    H --> I[Mod Hook on SetDoorState Intercepts:<br/>Redirects InNewState to OpenEvenInCombat (1)<br/>Clears WasSystemicallyClosed]
-    I --> J[Doorway Remains 100% Open & Traversable]
-    J --> K[Pointer Preserved: Zero Null-Pointer Dereferences, Zero Crashes]
+    A["Door in World: Closed & Untouched"] -->|Player approaches & pushes open| B["SetDoorState: Open / OnApproachTrigger"]
+    B --> C{"State == KeyLocked?"}
+    C -->|Yes| D["Preserve Narrative Lock 100%"]
+    C -->|No| E["Promote to OpenEvenInCombat (1)<br/>bInForcedOpen = true"]
+    E --> F["Player Crosses Threshold / TraversalAreaTrigger"]
+    F --> G["Active Engine Chaos Physics Neutralization:<br/>• K2_SetRelativeLocation -> Z = -50000.0<br/>• SetBoxExtent -> 0, 0, 0<br/>• SetCollisionProfileName -> NoCollision<br/>• SetCollisionEnabled -> 0<br/>• SetCollisionResponseToAllChannels -> 0<br/>• Door Leaf Mesh -> Ignore ECC_Pawn"]
+    G --> H["Encounter Engages & Attempts Closure:<br/>SetDoorState -> Locked (2) & WasSystemicallyClosed"]
+    H --> I["Mod Hook on SetDoorState Intercepts:<br/>Redirects InNewState to OpenEvenInCombat (1)<br/>Clears WasSystemicallyClosed"]
+    I --> J["Doorway Remains 100% Open & Traversable"]
+    J --> K["Pointer Preserved: Zero Null-Pointer Dereferences, Zero Crashes"]
 ```
 
 ### Key Logic Rules
