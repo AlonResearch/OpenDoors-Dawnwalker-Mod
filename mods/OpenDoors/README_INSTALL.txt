@@ -57,6 +57,19 @@ HOTKEYS & DIAGNOSTICS
   door status to UE4SS.log and ensures all doors are unlocked.
 
 --------------------------------------------------------------------------------
+NOTE ON ENEMY AI & PATHFINDING LEASH
+--------------------------------------------------------------------------------
+If enemies, mobs, or bosses stop pursuing you after you retreat back through
+the doorway, this is NOT a bug with Open Doors!
+In the base game, encounter developers built AI routines assuming the player
+would be locked inside. Thus, enemy pursuit boundaries (leashes) and navigation
+meshes are often confined to the interior room.
+Stepping outside into the courtyard may cause enemies to reach their native
+boundary and stop. While this enables tactical retreats, it can be cheesy.
+We are actively researching broader AI chase/pathfinding extensions for an
+upcoming release or companion mod!
+
+--------------------------------------------------------------------------------
 UNINSTALL
 --------------------------------------------------------------------------------
 Simply delete the "OpenDoors" folder from:

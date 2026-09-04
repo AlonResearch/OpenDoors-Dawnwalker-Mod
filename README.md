@@ -34,6 +34,19 @@ Even if you pushed the door open yourself and no guard bolted it shut, you are a
 
 ---
 
+## ⚠️ Important Note on Enemy AI & Pathfinding Leash
+
+> [!WARNING]
+> If enemies, mobs, or bosses stop pursuing you after you retreat back out through the doorway, **this is NOT caused by this mod**; it is the game's native AI navigation design.
+> 
+> In *The Blood of Dawnwalker*, the developers built combat encounters under the strict assumption that the player would always be locked inside the arena. As a result, enemy combat zones, pursuit bounds, and navigation meshes (`NavMesh`) are frequently tethered to the interior room.
+> 
+> When you step outside into the courtyard, enemies may reach the edge of their vanilla patrol volume and stop at the doorway. While this allows you to escape or reset, it can also allow cheesy combat (such as attacking from outside). 
+> 
+> **Upcoming Roadmap:** We are actively researching general AI pathfinding and chase leash expansion to allow enemies to pursue you freely into outside areas in an upcoming version or companion mod!
+
+---
+
 ## 🛠️ Requirements
 
 - **The Blood of Dawnwalker** (Steam / PC)
