@@ -10,22 +10,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Planned
-- Deploy UE4SS runtime loader to `game/Dawnwalker/Binaries/Win64/`.
-- Implement Lua hook in `mods/OpenDoors/scripts/main.lua` to:
-  1. Intercept `DogwoodBlueprintFunctionLibrary::SetDoorState` and suppress `WasSystemicallyClosed == true`.
-  2. Maintain opened doors in `EDoorState::OpenEvenInCombat`.
-  3. Ensure `DoorTrigger` keeps doors push-to-open during combat.
-- In-game verification in the "Rayko, the Incorruptible" guard tower encounter.
+- In-game verification of the "Rayko, the Incorruptible" guard tower encounter.
+- Verify door push-to-open responsiveness during active combat.
+- Standalone release package script for players.
 
 ---
 
-## [0.1.5] - 2026-09-04
+## [0.2.0] - 2026-09-04
 
 ### Added
-- **Story-Lock Preservation Guarantee**:
-  - Integrated `EDoorType::Quest` and `EDoorState::KeyLocked` into the architecture.
-  - Confirmed that story-blocked doors (requiring keys or quest milestones) are locked with `WasSystemicallyClosed = false` and remain completely untouched by the mod.
-  - Only doors that were legitimately openable and get slammed shut by combat encounter triggers (`WasSystemicallyClosed = true`) are kept open.
+- **Core Runtime Hook (`mods/OpenDoors/scripts/main.lua`)**:
+  - Implemented dynamic hook on `UDogwoodBlueprintFunctionLibrary::SetDoorState`.
+  - **Narrative Lock Guard**: Explicitly inspects `InNewState == EDoorState.KeyLocked` (5). When detected, the hook returns immediately, ensuring story quest gates and key-locked doors require their legitimate keys.
+  - **Systemic Lock Neutralization**: Automatically intercepts calls where `WasSystemicallyClosed == true`, clearing the systemic flag and promoting `InNewState` to `EDoorState.OpenEvenInCombat` (3).
+  - **Push-to-Open Promotion**: Automatically promotes normal door opening events (`EDoorState.Open = 1`) to `OpenEvenInCombat` (3) so the door naturally remains open if combat begins later.
+- **Loader Deployment & Junction**:
+  - Deployed UE4SS (UE 5.5 experimental build) via `dwmapi.dll` into `game/Dawnwalker/Binaries/Win64/`.
+  - Configured `UE4SS-settings.ini` with `GuiConsoleVisible = 0` and enabled console logging.
+  - Linked `game/Dawnwalker/Binaries/Win64/ue4ss/Mods/OpenDoors` directly to `mods/OpenDoors` via a Windows directory junction.
+  - Enabled `OpenDoors : 1` in `mods.txt`.
 
 ---
 
