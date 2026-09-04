@@ -7,12 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [Unreleased]
+## [1.1.0] - 2026-09-04
 
-### Planned
-- In-game verification of the "Rayko, the Incorruptible" guard tower encounter.
-- Verify door push-to-open responsiveness during active combat.
-- Standalone release package script for players.
+### Changed
+- **Realistic Passive Door Lifecycle**:
+  - Removed startup door-opening sweeps. Unvisited doors now remain 100% naturally closed until the player approaches and pushes them open.
+  - Defused `InvisibleWallForCombat` and `LockedObstacle` by setting collision to `NoCollision (0)`, collision response to all channels to `Ignore (0)`, zeroing box extents to `(0, 0, 0)`, and moving the obstacle away from the doorway threshold.
+  - Intercepted `SetDoorState` to redirect combat closure attempts (`Locked` / `WasSystemicallyClosed = true`) to `OpenEvenInCombat (1)` while clearing closure flags.
+  - Added pre-defusal hook on `OnApproachTriggerBeginOverlap` for immediate threshold cleanliness on approach.
+  - Re-scoped `F8` to a non-intrusive read-only diagnostic inspector for the nearest door.
+
+## [1.0.0] - 2026-09-04
+ 
+### Added
+- **Fully Autonomous Passive Door Management**:
+  - Eliminated manual hotkeys (F8 is now strictly an optional diagnostic status check).
+  - Automatically configures all doors across the active world and newly streamed level cells (`InitGameState`).
+  - Automatically neutralizes `InvisibleWallForCombat` and `LockedObstacle` on all non-quest doors.
+  - Corrected `EDoorState` enum definition from live UE4SS memory reflection:
+    - `0 = Open`
+    - `1 = OpenEvenInCombat` (True combat persistence state)
+    - `2 = Locked`
+    - `3 = KeyLocked` (Narrative quest lock)
+  - Intercepts native `SetDoorState` events to override systemic closure attempts to `OpenEvenInCombat (1)`.
+  - Strictly preserves narrative quest locks (`KeyLocked = 3`).
 
 ## [0.3.0] - 2026-09-04
 

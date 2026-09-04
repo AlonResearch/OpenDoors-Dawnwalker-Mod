@@ -1,246 +1,250 @@
-﻿-- Open Doors Mod for The Blood of Dawnwalker
--- Architecture: Promote-on-Open Native Lifecycle Strategy
--- Preserves narrative key-locked doors, keeps unvisited doors natural,
--- and prevents artificial combat lockout closures.
+-- Open Doors Mod for The Blood of Dawnwalker
+-- Architecture: Realistic Event-Driven Passive Lifecycle
+-- Engine Enums (UE5 Reflection):
+-- 0 = EDoorState::Open
+-- 1 = EDoorState::OpenEvenInCombat
+-- 2 = EDoorState::Locked
+-- 3 = EDoorState::KeyLocked (Narrative quest doors - strictly preserved)
 
 local MOD_NAME = 'OpenDoors'
-local VERSION = '0.2.0'
-
-print(string.format('[%s] Initializing version %s...', MOD_NAME, VERSION))
+local VERSION = '1.1.0'
+print(string.format('[%s] Initializing version %s (Realistic Passive Lifecycle)...', MOD_NAME, VERSION))
 
 local EDoorState = {
-    Invalid = 0,
-    Open = 1,
+    Open = 0,
+    OpenEvenInCombat = 1,
     Locked = 2,
-    OpenEvenInCombat = 3,
+    KeyLocked = 3,
     TimeOpenByDay = 4,
-    KeyLocked = 5,
+    TimeOpenByNight = 5,
     Disabled = 6,
-    TimeOpenByNight = 7
+    Invalid = 7
 }
 
-local HookedFunctions = {}
--- Track doors opened during this session to distinguish natural doors from encounter lockouts
-local OpenedDoors = {}
+-- Defuse InvisibleWallForCombat and LockedObstacle without opening or moving the door leaf
+local function DefuseDoorBarriers(door)
+    if not door or not door:IsValid() then return end
 
-local function GetDoorId(door)
-    if not door or not door:IsValid() then return nil end
-    local name = nil
-    pcall(function() name = door:GetFullName() end)
-    return name
+    local currentState = nil
+    pcall(function() currentState = door.DoorState end)
+
+    -- Strictly preserve narrative quest locks
+    if currentState == EDoorState.KeyLocked then
+        return
+    end
+
+    local root = door.RootComponent
+    if not root or not root:IsValid() then return end
+
+    local children = root.AttachChildren
+    if not children then return end
+
+    for i = 1, #children do
+        local child = children[i]
+        if child and child:IsValid() then
+            local cname = child:GetFName():ToString()
+            if cname == 'InvisibleWallForCombat' or cname == 'LockedObstacle' then
+                pcall(function()
+                    child:SetCollisionEnabled(0) -- NoCollision
+                    child:SetCollisionResponseToAllChannels(0) -- Ignore all channels
+                end)
+                pcall(function()
+                    if child.SetBoxExtent then
+                        child:SetBoxExtent({X = 0.0, Y = 0.0, Z = 0.0}, false)
+                    end
+                end)
+                pcall(function()
+                    local loc = child:K2_GetComponentLocation()
+                    loc.Z = loc.Z - 50000.0
+                    child:K2_SetWorldLocation(loc, false, nil, false)
+                end)
+            end
+        end
+    end
 end
 
--- 1. Hook SetDoorState: Central State Machine
+-- Hook SetDoorState: The core authority for door state transitions
+-- Intercepts encounter closures and promotes natural openings to OpenEvenInCombat
 local function OnSetDoorStatePre(Context, InNewState, WasSystemicallyClosed, WasSilentlyClosed, OpeningActor, bInForcedOpen, bFromSave, InOpenDirection)
     local door = Context and Context:get() or nil
-    local doorName = GetDoorId(door) or 'UnknownDoor'
-    local state = InNewState and InNewState:get() or nil
-    local systemic = WasSystemicallyClosed and WasSystemicallyClosed:get() or false
+    if not door or not door:IsValid() then return end
 
-    print(string.format('[%s] SetDoorState called on %s (TargetState=%s, Systemic=%s)', MOD_NAME, doorName, tostring(state), tostring(systemic)))
+    local targetState = InNewState and InNewState:get() or nil
+    local currentDoorState = nil
+    pcall(function() currentDoorState = door.DoorState end)
 
-    -- RULE A: Strictly preserve narrative quest locks (KeyLocked = 5)
-    if state == EDoorState.KeyLocked then
-        print(string.format('[%s] Preserving narrative KeyLocked state (5) on %s.', MOD_NAME, doorName))
+    -- RULE 1: Strictly preserve narrative quest doors (KeyLocked = 3)
+    if targetState == EDoorState.KeyLocked or currentDoorState == EDoorState.KeyLocked then
         return
     end
 
-    -- RULE B: Promote any naturally opened door to OpenEvenInCombat (3)
-    if state == EDoorState.Open then
-        print(string.format('[%s] Door opened! Promoting %s from Open (1) to OpenEvenInCombat (3).', MOD_NAME, doorName))
-        OpenedDoors[doorName] = true
-        if InNewState then
-            InNewState:set(EDoorState.OpenEvenInCombat)
-        end
-        return
-    end
-
-    -- RULE C: Intercept artificial combat/encounter lockouts
-    -- If combat triggers a systemic closure (WasSystemicallyClosed=true) OR tries to force Locked (2)
-    -- on a door that was opened or is in combat area:
-    if systemic == true or state == EDoorState.Locked then
-        -- Check if this door is a narrative key door
-        local currentState = nil
-        if door and door:IsValid() then
-            pcall(function() currentState = door.DoorState end)
-        end
-
-        if currentState == EDoorState.KeyLocked then
-            print(string.format('[%s] Door %s is natively KeyLocked. Allowing lock.', MOD_NAME, doorName))
-            return
-        end
-
-        print(string.format('[%s] Intercepted combat closure on %s! Neutralizing lock to OpenEvenInCombat (3).', MOD_NAME, doorName))
-        if WasSystemicallyClosed then
-            WasSystemicallyClosed:set(false)
-        end
+    -- RULE 2: Natural opening by player -> promote to OpenEvenInCombat (1)
+    if targetState == EDoorState.Open then
         if InNewState then
             InNewState:set(EDoorState.OpenEvenInCombat)
         end
         if bInForcedOpen then
             bInForcedOpen:set(true)
         end
-        if door and door:IsValid() then
-            pcall(function()
-                door.DoorState = EDoorState.OpenEvenInCombat
-                door.bForceDoorWideOpen = true
-                if door.SetDoorForcedOpen then
-                    door:SetDoorForcedOpen(true)
-                end
-            end)
-        end
-        return
-    end
-end
-
--- 2. Hook OnDoorStartedOpening: The instant a door is pushed, mark it OpenEvenInCombat
-local function OnDoorStartedOpeningHook(Context)
-    local door = Context and Context:get() or nil
-    local doorName = GetDoorId(door) or 'UnknownDoor'
-
-    print(string.format('[%s] OnDoorStartedOpening triggered on %s.', MOD_NAME, doorName))
-    if not door or not door:IsValid() then return end
-
-    local currentState = nil
-    pcall(function() currentState = door.DoorState end)
-    if currentState == EDoorState.KeyLocked then
+        DefuseDoorBarriers(door)
         return
     end
 
-    OpenedDoors[doorName] = true
-    pcall(function()
-        door.DoorState = EDoorState.OpenEvenInCombat
-        door.bForceDoorWideOpen = true
-    end)
-end
-
--- 3. Hook OnDoorStartedClosing: Prevent artificial closing on opened doors
-local function OnDoorStartedClosingHook(Context)
-    local door = Context and Context:get() or nil
-    local doorName = GetDoorId(door) or 'UnknownDoor'
-
-    if not door or not door:IsValid() then return end
-
-    local currentState = nil
-    pcall(function() currentState = door.DoorState end)
-    if currentState == EDoorState.KeyLocked then
-        return
-    end
-
-    -- If this door was opened or is in combat, keep it open!
-    if OpenedDoors[doorName] or currentState == EDoorState.OpenEvenInCombat or currentState == EDoorState.Open then
-        print(string.format('[%s] OnDoorStartedClosing intercepted on %s! Forcing door to remain OpenEvenInCombat.', MOD_NAME, doorName))
-        pcall(function()
-            door.DoorState = EDoorState.OpenEvenInCombat
-            door.bForceDoorWideOpen = true
-            if door.SetDoorForcedOpen then
-                door:SetDoorForcedOpen(true)
-            end
-        end)
-    end
-end
-
--- 4. Hook NotifyDoorStateChanged: Guard against out-of-band state flips
-local function OnNotifyDoorStateChangedHook(Context, InNewState)
-    local door = Context and Context:get() or nil
-    local doorName = GetDoorId(door) or 'UnknownDoor'
-    local state = InNewState and InNewState:get() or nil
-
-    if state == EDoorState.KeyLocked then return end
-
-    if (state == EDoorState.Locked) and (OpenedDoors[doorName] or state ~= EDoorState.KeyLocked) then
-        print(string.format('[%s] NotifyDoorStateChanged (Locked) intercepted on %s. Enforcing OpenEvenInCombat.', MOD_NAME, doorName))
+    -- RULE 3: Combat encounter attempts to lock or systemically slam the door shut
+    local isSystemicClose = WasSystemicallyClosed and WasSystemicallyClosed:get() == true
+    if targetState == EDoorState.Locked or isSystemicClose then
+        -- Override close: keep door open and traversable in combat
         if InNewState then
             InNewState:set(EDoorState.OpenEvenInCombat)
         end
-        if door and door:IsValid() then
-            pcall(function()
-                door.DoorState = EDoorState.OpenEvenInCombat
-                door.bForceDoorWideOpen = true
-                if door.SetDoorForcedOpen then
-                    door:SetDoorForcedOpen(true)
-                end
-            end)
+        if WasSystemicallyClosed then
+            WasSystemicallyClosed:set(false)
         end
-    end
-end
-
--- Registration Helper
-local function SafeHook(shortName, preHook, postHook)
-    if HookedFunctions[shortName] then return true end
-
-    local funcObj = FindObject('Function', shortName)
-    if funcObj and funcObj:IsValid() then
-        local fullName = funcObj:GetFullName()
-        local cleanName = fullName:gsub('^%a+ ', '')
-        local preId, postId = RegisterHook(cleanName, preHook, postHook)
-        if preId then
-            HookedFunctions[shortName] = true
-            print(string.format('[%s] Successfully hooked %s (Pre: %s, Post: %s)', MOD_NAME, cleanName, tostring(preId), tostring(postId)))
-            return true
+        if WasSilentlyClosed then
+            WasSilentlyClosed:set(false)
         end
-    end
-    return false
-end
+        if bInForcedOpen then
+            bInForcedOpen:set(true)
+        end
 
-local function RegisterAllDoorHooks()
-    SafeHook('SetDoorState', OnSetDoorStatePre)
-    SafeHook('OnDoorStartedOpening', OnDoorStartedOpeningHook)
-    SafeHook('OnDoorStartedClosing', OnDoorStartedClosingHook)
-    SafeHook('NotifyDoorStateChanged', OnNotifyDoorStateChangedHook)
-end
-
--- Initial hook attempt
-RegisterAllDoorHooks()
-
--- Retry hooks on World load and InitGameState
-RegisterInitGameStatePostHook(function()
-    print(string.format('[%s] InitGameState fired. Verifying door hooks...', MOD_NAME))
-    RegisterAllDoorHooks()
-end)
-
-NotifyOnNewObject('/Script/Engine.World', function(world)
-    print(string.format('[%s] World loaded (%s). Verifying door hooks...', MOD_NAME, world:GetFullName()))
-    RegisterAllDoorHooks()
-end)
-
--- 5. Diagnostic / Emergency Keybind: F8
--- Dumps all door states in the area to UE4SS.log and frees any stuck doors
-RegisterKeyBindAsync(Key.F8, {}, function()
-    print(string.format('[%s] === F8 PRESSED: INSPECTING ALL DOORS IN WORLD ===', MOD_NAME))
-    local doors = FindAllOf('Door')
-    if not doors or #doors == 0 then
-        print(string.format('[%s] No doors found in active memory.', MOD_NAME))
+        DefuseDoorBarriers(door)
         return
     end
+end
 
-    print(string.format('[%s] Found %d doors in active cell/world:', MOD_NAME, #doors))
-    for i, door in ipairs(doors) do
+local setDoorStateFunc = FindObject('Function', 'SetDoorState')
+if setDoorStateFunc and setDoorStateFunc:IsValid() then
+    local fullName = setDoorStateFunc:GetFullName()
+    local cleanName = fullName:gsub('^%a+ ', '')
+    RegisterHook(cleanName, OnSetDoorStatePre)
+    print(string.format('[%s] Hooked native %s', MOD_NAME, cleanName))
+else
+    print(string.format('[%s] WARNING: SetDoorState function not found to hook', MOD_NAME))
+end
+
+-- Hook NotifyDoorStateChanged to ensure barrier defusal on any state transition
+local notifyFunc = FindObject('Function', 'NotifyDoorStateChanged')
+if notifyFunc and notifyFunc:IsValid() then
+    local fullName = notifyFunc:GetFullName()
+    local cleanName = fullName:gsub('^%a+ ', '')
+    RegisterHook(cleanName, function(Context)
+        local door = Context and Context:get() or nil
         if door and door:IsValid() then
-            local name = door:GetFullName()
-            local state = 'unknown'
-            local forcedOpen = 'unknown'
-            pcall(function() state = tostring(door.DoorState) end)
-            pcall(function() forcedOpen = tostring(door.bForceDoorWideOpen) end)
+            local state = nil
+            pcall(function() state = door.DoorState end)
+            if state and state ~= EDoorState.KeyLocked then
+                if state == EDoorState.Locked then
+                    pcall(function() door.DoorState = EDoorState.OpenEvenInCombat end)
+                end
+                DefuseDoorBarriers(door)
+            end
+        end
+    end)
+    print(string.format('[%s] Hooked native %s', MOD_NAME, cleanName))
+end
 
-            print(string.format('[%s]   [%d] %s | State=%s | ForcedOpen=%s | TrackedOpened=%s',
-                MOD_NAME, i, name, state, forcedOpen, tostring(OpenedDoors[name])))
+-- Hook Approach Trigger: Pre-defuse combat barrier when player approaches a door
+local approachFunc = FindObject('Function', 'OnApproachTriggerBeginOverlap')
+if approachFunc and approachFunc:IsValid() then
+    local fullName = approachFunc:GetFullName()
+    local cleanName = fullName:gsub('^%a+ ', '')
+    RegisterHook(cleanName, function(Context)
+        local door = Context and Context:get() or nil
+        if door and door:IsValid() then
+            DefuseDoorBarriers(door)
+        end
+    end)
+    print(string.format('[%s] Hooked native %s', MOD_NAME, cleanName))
+end
 
-            -- If door is currently locked but not KeyLocked (5), free it
-            if state == '2' or state == tostring(EDoorState.Locked) then
-                print(string.format('[%s]   -> Freeing locked door [%d]!', MOD_NAME, i))
-                OpenedDoors[name] = true
-                pcall(function()
-                    door.DoorState = EDoorState.OpenEvenInCombat
-                    door.bForceDoorWideOpen = true
-                    if door.SetDoorForcedOpen then
-                        door:SetDoorForcedOpen(true)
-                    end
-                end)
+-- Level Streaming / Initialization: Defuse invisible barriers ONLY
+-- NOTE: Doors remain closed in their natural vanilla state! We do NOT open them.
+local function OnLevelStreaming()
+    local doors = FindAllOf('Door')
+    if not doors then return end
+    local count = 0
+    for _, d in ipairs(doors) do
+        if d and d:IsValid() then
+            local state = nil
+            pcall(function() state = d.DoorState end)
+            if state ~= EDoorState.KeyLocked then
+                DefuseDoorBarriers(d)
+                count = count + 1
             end
         end
     end
-    print(string.format('[%s] === END OF F8 SCAN ===', MOD_NAME))
+    print(string.format('[%s] Streamed level: defused barriers on %d doors (doors stay naturally closed).', MOD_NAME, count))
+end
+
+RegisterInitGameStatePostHook(function()
+    print(string.format('[%s] InitGameState fired.', MOD_NAME))
+    OnLevelStreaming()
 end)
 
-print(string.format('[%s] Setup complete. Promote-on-Open strategy active (F8 diagnostic available).', MOD_NAME))
+-- Diagnostic Status Key (F8): Read-only status report for the nearest door
+RegisterKeyBindAsync(Key.F8, {}, function()
+    print(string.format('[%s] ==========================================', MOD_NAME))
+    print(string.format('[%s] === F8 DIAGNOSTIC DOOR INSPECTION ===', MOD_NAME))
+    print(string.format('[%s] ==========================================', MOD_NAME))
+
+    local pc = nil
+    pcall(function() pc = GetPlayerController() end)
+    local pawn = nil
+    if pc and pc:IsValid() then
+        pcall(function() pawn = pc.Pawn or pc.AcknowledgedPawn end)
+    end
+    if not pawn or not pawn:IsValid() then
+        local pawns = FindAllOf('PlayerCharacter') or FindAllOf('Character')
+        if pawns and #pawns > 0 then
+            for _, p in ipairs(pawns) do
+                if p and p:IsValid() and p:IsPlayerControlled() then pawn = p break end
+            end
+        end
+    end
+
+    if not pawn or not pawn:IsValid() then
+        print(string.format('[%s] Player pawn not found.', MOD_NAME))
+        return
+    end
+
+    local pLoc = pawn:K2_GetActorLocation()
+    local doors = FindAllOf('Door') or {}
+    local nearest, minDist = nil, 999999
+    for _, d in ipairs(doors) do
+        if d and d:IsValid() then
+            local dLoc = d:K2_GetActorLocation()
+            local dist = math.sqrt((pLoc.X-dLoc.X)^2 + (pLoc.Y-dLoc.Y)^2 + (pLoc.Z-dLoc.Z)^2)
+            if dist < minDist then minDist = dist nearest = d end
+        end
+    end
+
+    if not nearest then
+        print(string.format('[%s] No door found in memory.', MOD_NAME))
+        return
+    end
+
+    print(string.format('[%s] Nearest Door: %s (Dist: %.1f cm)', MOD_NAME, nearest:GetFullName(), minDist))
+    print(string.format('[%s]   DoorState: %s', MOD_NAME, tostring(nearest.DoorState)))
+    print(string.format('[%s]   bForceDoorWideOpen: %s', MOD_NAME, tostring(nearest.bForceDoorWideOpen)))
+
+    local root = nearest.RootComponent
+    if root and root:IsValid() then
+        local children = root.AttachChildren
+        if children then
+            for i = 1, #children do
+                local c = children[i]
+                if c and c:IsValid() then
+                    local cname = c:GetFName():ToString()
+                    if cname:find('Barrier') or cname:find('Wall') or cname:find('Obstacle') or cname:find('Trigger') or cname:find('Mesh') then
+                        local col = 'N/A'
+                        pcall(function() col = tostring(c:GetCollisionEnabled()) end)
+                        print(string.format('[%s]   Component [%s]: Col=%s', MOD_NAME, cname, col))
+                    end
+                end
+            end
+        end
+    end
+    print(string.format('[%s] ==========================================', MOD_NAME))
+end)
+
+print(string.format('[%s] Mod loaded successfully. Realistic passive doors active.', MOD_NAME))
