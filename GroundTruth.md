@@ -9,16 +9,17 @@
 **Open Doors** is a quality-of-life and immersion mod for *The Blood of Dawnwalker* (Rebel Wolves).
 
 ### Core Problem
-In the base game, crossing doorway thresholds into interior locations (e.g. watchtowers, fortress chambers) triggers automatic door closures and invisible barrier collisions behind the player. Even if the player opened the door themselves and no enemy physically locks it, the entrance slams shut and seals, preventing tactical retreat, scouting, or peeking.
+In the base game, entering an interior room or watchtower and triggering combat (or an encounter like *"Rayko, the Incorruptible"*) causes the door to immediately swing shut behind the player and lock. Furthermore, entering combat disables the player's ability to interact with doors, trapping the player in an artificial arena lockout.
 
 ### Objective
-Disable automated door closure triggers and barrier collision volumes for non-boss interior transitions, allowing doors to stay open and players to enter and exit freely.
+Leverage the game's native primitives to:
+1. Prevent systemic door closures (`WasSystemicallyClosed`) upon entering combat.
+2. Maintain doors in the native `EDoorState::OpenEvenInCombat` state when opened.
+3. Allow the player to interact with and reopen doors even while in combat mode (`Player.Input.BlockInteractions`).
 
 ---
 
 ## 2. Target Environment Specifications
-
-The mod targets the shipping PC build of the game:
 
 | Component | Target Specification |
 |---|---|
@@ -26,45 +27,75 @@ The mod targets the shipping PC build of the game:
 | **Developer** | Rebel Wolves Sp. z o.o. |
 | **Executable** | `game/Dawnwalker/Binaries/Win64/Dawnwalker.exe` (`Dawnwalker-Win64-Shipping.exe`) |
 | **Asset Packaging** | IoStore v8 (`game/Dawnwalker/Content/Paks/Dawnwalker-Windows.*`) |
-| **Container Flags** | Compressed (256 KB blocks), AES-256 Encrypted, Indexed (778,648 entries) |
-| **Custom Modules** | `RebelSettings`, `RebelInput`, and `Rebel*` gameplay runtime classes |
+| **Core Game Modules** | `DogwoodCombat`, `DogwoodAI`, `DogwoodWorld`, `RebelAI`, `RebelInput` |
+| **Core Utility Library**| `DogwoodBlueprintFunctionLibrary` |
 
-*Note: All paths in this repository are relative to the repository root, where `game/` is a local directory junction pointing to the game installation.*
-
----
-
-## 3. Gameplay Breakdown & Trigger Mechanics
-
-Analysis of baseline gameplay footage:
-- **Location**: Guard post stone tower during the quest *"The Firebrand"*.
-- **Sequence**:
-  1. Player opens the wooden door and walks through the threshold.
-  2. Crossing the threshold activates the encounter trigger (*"Rayko, the Incorruptible"*).
-  3. The wooden door immediately swings closed automatically without an NPC interacting with it.
-  4. An invisible barrier / locked collision engages at the doorframe, preventing the player from backing out.
-- **Engine Trigger Structure**:
-  - Threshold trigger volume fires `OnActorBeginOverlap`.
-  - Encounter state initiates and invokes a close/lock event on the door actor.
-  - Collision state is updated on the doorway volume to block player egress.
+*Note: All paths in this repository are relative to the repository root via the `game/` directory junction.*
 
 ---
 
-## 4. Architecture & Update-Resilient Philosophy
+## 3. Verified Game Primitives & Mechanics
 
-To ensure the mod survives subsequent game patches without breaking, we adhere to a **Native Primitives First** architecture:
+Reverse-engineering of `Dawnwalker.exe` has identified the exact engine primitives governing doors and combat lockouts:
 
-### Update-Resilience Principles
-1. **Zero Fragile Offsets**: Avoid raw memory addresses, assembly patch patterns (AOB), or compiler-dependent offsets.
-2. **Hook by High-Level Symbolic Names**: Utilize Unreal Engine's reflection system (`UClass`, `UFunction`, `FProperty`) to identify and bind to functions by string/FName. Reflection names remain stable across game patches.
-3. **Target Root Archetypes**:
-   - Target master base classes (e.g. `BP_DoorBase` or `ARebelDoor`) so all level instances inherit the modifications automatically.
-   - Adjust native actor properties (e.g. `bCanBeLocked`, `bAutoCloseOnTrigger`) or component collision profiles (`SetCollisionEnabled`) at initialization, letting the game's own engine handle physics and interactions naturally.
-4. **Non-Invasive Execution**: Rely on lightweight runtime state adjustments rather than destructive binary or 43+ GB container asset rewrites.
+### A. The Native Door State Enum (`EDoorState`)
+```cpp
+enum class EDoorState : uint8
+{
+    Invalid           = 0,
+    Open              = 1,
+    Locked            = 2,
+    OpenEvenInCombat  = 3, // Native engine state designed to persist through combat!
+    TimeOpenByDay     = 4,
+    KeyLocked         = 5,
+    Disabled          = 6,
+    TimeOpenByNight   = 7
+};
+```
+
+### B. The Systemic Closure Primitive
+The central engine function controlling doors is:
+```cpp
+UDogwoodBlueprintFunctionLibrary::SetDoorState(
+    EDoorState InNewState,
+    bool WasSystemicallyClosed, // Triggered true when encounter/combat forces door shut
+    bool WasSilentlyClosed,
+    AActor* OpeningActor,
+    bool bInForcedOpen,
+    bool bFromSave,
+    EDoorOpenDirection InOpenDirection
+);
+```
+- **Trigger**: When an encounter or combat state begins (`RebelAI.Event.Combat.Started`), the encounter manager calls `SetDoorState` with `WasSystemicallyClosed = true` and `InNewState = EDoorState::Locked`.
+- **Observation Verification**: When the player merely alerts enemies without triggering full combat mode, `WasSystemicallyClosed` is not called, confirming the closure is directly driven by the combat initiation sequence.
+
+### C. Combat Interaction Lockout
+- Entering combat tags the player with `Player.Input.BlockInteractions` and `Player.IsEffectivelyInCombat`.
+- The interaction subsystem (`DISInteraction`, `GetInteractablePrompt`, `TriggerDISInteraction`) checks this tag and blocks input for opening doors.
+
+---
+
+## 4. Mod Implementation Architecture (Native Primitives First)
+
+The mod applies a 3-pillar strategy targeting the game's native primitives:
+
+1. **State Promotion to `OpenEvenInCombat`**:
+   - When a door is opened by the player, ensure its target state is promoted to `EDoorState::OpenEvenInCombat` (value 3).
+   - This uses the game's own native logic to instruct the engine not to shut the door during combat.
+
+2. **Systemic Closure Neutralization**:
+   - Intercept calls to `SetDoorState`.
+   - If `WasSystemicallyClosed == true` (automated encounter/combat slam), suppress the state change or override `InNewState` to keep the door open, preserving normal narrative key-locked doors (`EDoorState::KeyLocked`).
+
+3. **Combat Door Interaction Unlock**:
+   - Override the interaction gate (`TriggerDISInteraction` / `GetInteractablePrompt`) for actors of type door, bypassing `Player.Input.BlockInteractions` so players can open closed doors at will during combat.
 
 ---
 
 ## 5. Current Active Implementation
 
-- **Repository Structure**: Established with zero machine-specific paths, relative `game/` junction, and update-resilient agent guidelines (`AGENTS.md`).
-- **Engine Verification**: Confirmed UE 5.5.4 binary profile and IoStore v8 encryption status.
-- **Current Milestone**: Phase 2 — Preparing reflection dumper / UE4SS integration in `game/Dawnwalker/Binaries/Win64/` to identify root door actor classes, property flags, and collision components.
+- [x] Reverse-engineered `Dawnwalker.exe` binary symbols and reflection tables.
+- [x] Discovered native `EDoorState::OpenEvenInCombat` enum.
+- [x] Identified `DogwoodBlueprintFunctionLibrary::SetDoorState` and `WasSystemicallyClosed` mechanic.
+- [x] Identified combat interaction blocker tag `Player.Input.BlockInteractions`.
+- [ ] Milestone: Implement lightweight UE4SS Lua interceptor in `mods/OpenDoors` targeting `SetDoorState` and door interaction in combat.

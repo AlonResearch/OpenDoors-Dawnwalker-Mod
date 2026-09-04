@@ -10,33 +10,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Planned
-- Deploy UE4SS runtime hook into `game/Dawnwalker/Binaries/Win64/`.
-- Enumerate live `UObject` and `UFunction` names for doors and encounter barriers.
-- Implement Lua hook to prevent automatic door closure and barrier collision engagement.
+- Deploy UE4SS runtime loader to `game/Dawnwalker/Binaries/Win64/`.
+- Implement Lua hook in `mods/OpenDoors/scripts/main.lua` to promote opened doors to `EDoorState::OpenEvenInCombat` and suppress `WasSystemicallyClosed`.
+- Test in-game behavior during the "Rayko, the Incorruptible" guard tower encounter.
+
+---
+
+## [0.1.3] - 2026-09-04
+
+### Added
+- **Discovery of Native Door Primitives**:
+  - Uncovered native `EDoorState` reflection enum in `game/Dawnwalker/Binaries/Win64/Dawnwalker.exe`, revealing `EDoorState::OpenEvenInCombat` (value 3).
+  - Identified `UDogwoodBlueprintFunctionLibrary::SetDoorState` and the `WasSystemicallyClosed` parameter responsible for automated encounter door locks.
+  - Isolated the combat interaction blocker tag `Player.Input.BlockInteractions` and interaction dispatch framework (`DISInteraction`).
+- **Technical Strategy Finalization**: Formulated the 3-pillar native primitive approach in `GroundTruth.md` (State Promotion, Systemic Closure Interception, Combat Interaction Unlock).
 
 ---
 
 ## [0.1.2] - 2026-09-04
 
 ### Added
-- **Update-Resilient Engineering Standards**: Added explicit rules to `AGENTS.md` and `GroundTruth.md` establishing a "Native Primitives First" development philosophy:
-  - Banned brittle memory addresses, AOB pattern-scans, and compiler-dependent offsets.
-  - Standardized on high-level Unreal Engine reflection symbols (`FName`), root parent archetype targets, and native property manipulation (`bCanBeLocked`, collision profiles) to ensure forward compatibility across future game updates.
+- **Update-Resilient Engineering Standards**: Added explicit rules to `AGENTS.md` and `GroundTruth.md` establishing a "Native Primitives First" development philosophy.
 
 ---
 
 ## [0.1.1] - 2026-09-04
 
 ### Changed
-- **Privacy & Path Normalization**: Stripped all machine-specific absolute paths from all repository documentation (`README.md`, `GroundTruth.md`, `AGENTS.md`).
-- **Junction Standard**: Standardized on relative `game/` path using a local directory junction (`mklink /J game <path>`), ignored via `.gitignore`.
-- **Documentation Refactoring**: Lean, unbloated documentation structure aligned with project standards (`GroundTruth.md`, `Changelog.md`, `AGENTS.md`).
+- **Privacy & Path Normalization**: Stripped all machine-specific absolute paths from all repository documentation.
+- **Junction Standard**: Standardized on relative `game/` path using a local directory junction (`mklink /J game <path>`).
+- **Documentation Refactoring**: Lean, unbloated documentation structure aligned with project standards.
 
 ---
 
 ## [0.1.0] - 2026-09-04
 
 ### Added
-- **Repository Setup**: Initialized Git repository, `README.md`, `GroundTruth.md`, `AGENTS.md`, `Changelog.md`, and `.gitignore`.
-- **Target Profiling**: Identified Unreal Engine 5.5.4.0 (`dw1-pc-256181-shipping-patch2-all-CL-256181`) and IoStore v8 container format (AES-256 encrypted, compressed).
-- **Gameplay Analysis**: Analyzed gameplay footage to isolate the doorway trigger sequence and automatic closure mechanism in the guard post stone tower.
+- **Repository Setup**: Initialized Git repository and documentation suite.
+- **Target Profiling**: Identified Unreal Engine 5.5.4.0 and IoStore v8 container format.
