@@ -19,6 +19,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.5] - 2026-09-04
+
+### Added
+- **Story-Lock Preservation Guarantee**:
+  - Integrated `EDoorType::Quest` and `EDoorState::KeyLocked` into the architecture.
+  - Confirmed that story-blocked doors (requiring keys or quest milestones) are locked with `WasSystemicallyClosed = false` and remain completely untouched by the mod.
+  - Only doors that were legitimately openable and get slammed shut by combat encounter triggers (`WasSystemicallyClosed = true`) are kept open.
+
+---
+
 ## [0.1.4] - 2026-09-04
 
 ### Changed
