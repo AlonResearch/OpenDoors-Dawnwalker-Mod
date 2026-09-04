@@ -1,4 +1,8 @@
-# Binaries and Dumps
+# Game Directory Junction / Symlink
+game
+game/
+
+# Binaries, Packages and Dumps
 *.exe
 *.dll
 *.pdb
@@ -7,13 +11,22 @@
 *.pak
 *.ucas
 *.utoc
+*.upipelinecache
+*.sav
 
-# SDK and Dumped assets
+# Media and Captures
+*.mp4
+*.mkv
+*.avi
+*.mov
+
+# SDK and Dumped Assets
 /SDK/
 /Dumped/
 /Unpacked/
 
-# Temp and logs
+# Temp, Caches and Logs
 *.log
 *.tmp
 .cache/
+scratch/
