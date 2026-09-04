@@ -73,7 +73,7 @@ Doors (e.g. `BP_CityDoor_B_Right_C`, `BP_VillageDoor_A_Left_C`) contain attached
 
 ## 4. Mod Implementation Architecture (`mods/OpenDoors/scripts/main.lua`)
 
-The active mod implementation operates on the **Dual-Layered Reactive Lifecycle & Low-Level Primitive Collision Interception Strategy** (v1.2.0):
+The active mod implementation operates on the **Dual-Layered Reactive Lifecycle & Permanent Barrier Annihilation Strategy** (v1.3.0):
 
 ```mermaid
 flowchart TD

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.3.0] - 2026-09-04
+
+### Changed
+- **Permanent Barrier Annihilation & Complete Door Control**:
+  - Re-integrated full `SetDoorState`, `OnApproachTriggerBeginOverlap`, and `NotifyDoorStateChanged` hooks to guarantee doors swing open naturally and never close or lock during encounters.
+  - Added `K2_DestroyComponent` barrier destruction in addition to `NoCollision (0)`, zero extents, and relocation.
+  - Configured `F8` as an immediate emergency unlock and barrier annihilation hotkey that instantly forces nearest doors to `OpenEvenInCombat (1)`.
+
 ## [1.2.0] - 2026-09-04
 
 ### Added
