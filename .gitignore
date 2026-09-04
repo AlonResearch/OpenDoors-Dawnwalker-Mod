@@ -1,0 +1,19 @@
+# Binaries and Dumps
+*.exe
+*.dll
+*.pdb
+*.bin
+*.dmp
+*.pak
+*.ucas
+*.utoc
+
+# SDK and Dumped assets
+/SDK/
+/Dumped/
+/Unpacked/
+
+# Temp and logs
+*.log
+*.tmp
+.cache/
