@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Purely reactive event-driven lifecycle targeting `/Script/DogwoodWorld.Door` native events (`SetDoorState`, `NotifyDoorStateChanged`, `OnApproachTriggerBeginOverlap`, `OnTraversalAreaBeginOverlap`, `OnTraversalAreaEndOverlap`). Zero idle CPU cycles.
 - **100% Crash-Proof Non-Destructive Design**:
   - Never destroys UObject components, preventing C++ encounter null-pointer dereference crashes (`0xc0000005`).
+- **Official Nexus & Media Assets**:
+  - Added high-resolution custom visual assets in `assets/` including square mod tile icons and widescreen hero banners with stylized dark fantasy typography for Nexus Mods publishing.
 
 ## [1.6.0] - 2026-09-04
 
