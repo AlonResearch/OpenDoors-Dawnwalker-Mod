@@ -11,8 +11,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Planned
 - Deploy UE4SS runtime loader to `game/Dawnwalker/Binaries/Win64/`.
-- Implement Lua hook in `mods/OpenDoors/scripts/main.lua` to promote opened doors to `EDoorState::OpenEvenInCombat` and suppress `WasSystemicallyClosed`.
-- Test in-game behavior during the "Rayko, the Incorruptible" guard tower encounter.
+- Implement Lua hook in `mods/OpenDoors/scripts/main.lua` to:
+  1. Intercept `DogwoodBlueprintFunctionLibrary::SetDoorState` and suppress `WasSystemicallyClosed == true`.
+  2. Maintain opened doors in `EDoorState::OpenEvenInCombat`.
+  3. Ensure `DoorTrigger` keeps doors push-to-open during combat.
+- In-game verification in the "Rayko, the Incorruptible" guard tower encounter.
+
+---
+
+## [0.1.4] - 2026-09-04
+
+### Changed
+- **Door-Centric Architecture**: Refactored the mod logic to focus exclusively on the Door actor and its native push-to-open / stumble-to-open triggers (`DoorTrigger`), leaving player combat input 100% vanilla.
+- **Push-to-Open Continuity**: Confirmed that doors open automatically upon physical approach without requiring button presses. Ensured the mod allows doors to be pushed open in combat without prompts.
+
+### Deprecated
+- **Player Combat Interaction Modification**: Deprecated and pruned any attempts to alter `Player.Input.BlockInteractions` or player interaction prompts during combat, preventing unwanted UI prompts (e.g. loot) or input interference during combat.
 
 ---
 
@@ -23,7 +37,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Uncovered native `EDoorState` reflection enum in `game/Dawnwalker/Binaries/Win64/Dawnwalker.exe`, revealing `EDoorState::OpenEvenInCombat` (value 3).
   - Identified `UDogwoodBlueprintFunctionLibrary::SetDoorState` and the `WasSystemicallyClosed` parameter responsible for automated encounter door locks.
   - Isolated the combat interaction blocker tag `Player.Input.BlockInteractions` and interaction dispatch framework (`DISInteraction`).
-- **Technical Strategy Finalization**: Formulated the 3-pillar native primitive approach in `GroundTruth.md` (State Promotion, Systemic Closure Interception, Combat Interaction Unlock).
 
 ---
 
@@ -39,7 +52,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - **Privacy & Path Normalization**: Stripped all machine-specific absolute paths from all repository documentation.
 - **Junction Standard**: Standardized on relative `game/` path using a local directory junction (`mklink /J game <path>`).
-- **Documentation Refactoring**: Lean, unbloated documentation structure aligned with project standards.
 
 ---
 
