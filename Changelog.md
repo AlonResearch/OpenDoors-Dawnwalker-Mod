@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.2.0] - 2026-09-04
+
+### Added
+- **Low-Level Primitive Collision Interception**:
+  - Hooked native `UPrimitiveComponent:SetCollisionEnabled` to intercept any runtime attempt to activate `InvisibleWallForCombat` or `LockedObstacle`, overriding `NewType` to `0` (`NoCollision`).
+  - Hooked native `UPrimitiveComponent:SetCollisionProfileName` to force collision profile to `'NoCollision'`.
+  - Added full active world sweep on startup and level streaming (`InitGameState`) that neutralizes all 44 active barrier boxes across the map (`SetBoxExtent(0,0,0)`, zero collision, relocated away from doorway).
+
 ## [1.1.0] - 2026-09-04
 
 ### Changed
