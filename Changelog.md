@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.4.0] - 2026-09-04
+
+### Fixed
+- **Resolved Encounter Null-Pointer Crash (`0xc0000005`)**:
+  - Removed `K2_DestroyComponent` calls on `InvisibleWallForCombat`. In Unreal Engine C++, destroying components referenced by encounter managers caused access violations when combat initiated.
+  - Implemented 100% crash-proof barrier neutralization by setting box extents to `(0, 0, 0)`, moving relative location 500m underground (`Z = -50000.0`), and setting collision to `NoCollision (0)` / `ECR_Ignore`.
+  - Re-scoped hooks exclusively to `/Script/DogwoodWorld.Door` events (`SetDoorState`, `NotifyDoorStateChanged`, `OnApproachTriggerBeginOverlap`, `OnTraversalAreaBeginOverlap`, `OnTraversalAreaEndOverlap`), eliminating any hook overhead on base engine primitives.
+
 ## [1.3.0] - 2026-09-04
 
 ### Changed

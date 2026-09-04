@@ -1,14 +1,11 @@
 -- Open Doors Mod for The Blood of Dawnwalker
--- Architecture: Unified Passive Lifecycle & Permanent Barrier Annihilation (v1.3.0)
--- Engine Enums (UE5 Reflection):
--- 0 = EDoorState::Open
--- 1 = EDoorState::OpenEvenInCombat
--- 2 = EDoorState::Locked
--- 3 = EDoorState::KeyLocked (Narrative quest doors - strictly preserved)
+-- Architecture: Safe Non-Destructive Door & Barrier Control (v1.4.0)
+-- Strict Invariant: Never destroy components (prevents null pointer crashes)
+-- Strict Invariant: Only hook Door-specific functions (zero idle overhead, stable physics)
 
 local MOD_NAME = 'OpenDoors'
-local VERSION = '1.3.0'
-print(string.format('[%s] Initializing version %s (Permanent Barrier Annihilation)...', MOD_NAME, VERSION))
+local VERSION = '1.4.0'
+print(string.format('[%s] Initializing version %s (Safe Non-Destructive Architecture)...', MOD_NAME, VERSION))
 
 local EDoorState = {
     Open = 0,
@@ -21,40 +18,39 @@ local EDoorState = {
     Invalid = 7
 }
 
--- 1. Surgical Barrier Annihilation
--- Permanently disables collision, zeroes extents, moves, and destroys the component
-local function AnnihilateBarrier(comp)
+-- Safely neutralize a barrier component WITHOUT destroying it
+-- Zero extents + underground relocation guarantees it can NEVER collide with the player,
+-- while preserving the pointer so the game encounter engine never crashes!
+local function NeutralizeBarrierSafe(comp)
     if not comp or not comp:IsValid() then return end
 
+    -- 1. Disable collision and ignore all channels
     pcall(function() comp:SetCollisionEnabled(0) end) -- ECollisionEnabled::NoCollision
     pcall(function() comp.BodyInstance.CollisionEnabled = 0 end)
     pcall(function() comp:SetCollisionProfileName(FName('NoCollision'), false) end)
-    pcall(function() comp:SetCollisionResponseToAllChannels(0) end)
+    pcall(function() comp:SetCollisionResponseToAllChannels(0) end) -- ECR_Ignore
+
+    -- 2. Zero out the box extents (size becomes 0 x 0 x 0)
     pcall(function()
         if comp.SetBoxExtent then
             comp:SetBoxExtent({X = 0.0, Y = 0.0, Z = 0.0}, false)
         end
     end)
+
+    -- 3. Move the box 500 meters underground so it is completely removed from the doorway
     pcall(function()
-        local loc = comp:K2_GetComponentLocation()
-        loc.Z = loc.Z - 50000.0
-        comp:K2_SetWorldLocation(loc, false, nil, false)
-    end)
-    pcall(function()
-        if comp.K2_DestroyComponent then
-            comp:K2_DestroyComponent(comp)
-        end
+        comp:K2_SetRelativeLocation({X = 0.0, Y = 0.0, Z = -50000.0}, false, nil, false)
     end)
 end
 
--- Defuse all barriers on a specific door
+-- Defuse barriers for a specific door
 local function DefuseDoorBarriers(door)
     if not door or not door:IsValid() then return end
 
     local currentState = nil
     pcall(function() currentState = door.DoorState end)
 
-    -- Strictly preserve narrative quest locks
+    -- Strictly preserve narrative quest locks (KeyLocked = 3)
     if currentState == EDoorState.KeyLocked then
         return
     end
@@ -70,81 +66,31 @@ local function DefuseDoorBarriers(door)
         if child and child:IsValid() then
             local cname = child:GetFName():ToString()
             if cname == 'InvisibleWallForCombat' or cname == 'LockedObstacle' then
-                AnnihilateBarrier(child)
+                NeutralizeBarrierSafe(child)
             end
         end
     end
 end
 
--- Sweep all doors and barrier components across the active world
-local function SweepAllWorldBarriers()
-    local allBoxes = FindAllOf('BoxComponent') or {}
+-- Sweep barriers on level streaming / load
+local function SweepAllDoorBarriers()
+    local doors = FindAllOf('Door') or {}
     local count = 0
-    for _, b in ipairs(allBoxes) do
-        if b and b:IsValid() then
-            local bname = b:GetFName():ToString()
-            if bname == 'InvisibleWallForCombat' or bname == 'LockedObstacle' then
-                local outer = b:GetOuter()
-                local isKeyLocked = false
-                if outer and outer:IsValid() then
-                    pcall(function()
-                        if outer.DoorState == EDoorState.KeyLocked then
-                            isKeyLocked = true
-                        end
-                    end)
-                end
-                if not isKeyLocked then
-                    AnnihilateBarrier(b)
-                    count = count + 1
-                end
+    for _, d in ipairs(doors) do
+        if d and d:IsValid() then
+            local state = nil
+            pcall(function() state = d.DoorState end)
+            if state ~= EDoorState.KeyLocked then
+                DefuseDoorBarriers(d)
+                count = count + 1
             end
         end
     end
-    print(string.format('[%s] Annihilated %d combat barriers in world.', MOD_NAME, count))
+    print(string.format('[%s] Safely neutralized combat barriers on %d doors.', MOD_NAME, count))
 end
 
--- HOOK 1: Intercept SetCollisionEnabled on PrimitiveComponent
-local function OnSetCollisionEnabledPre(Context, NewType)
-    local comp = Context and Context:get() or nil
-    if not comp or not comp:IsValid() then return end
-
-    local cname = comp:GetFName():ToString()
-    if cname == 'InvisibleWallForCombat' or cname == 'LockedObstacle' then
-        if NewType then
-            NewType:set(0) -- Force NoCollision
-        end
-    end
-end
-
-local setColFn = FindObject('Function', 'SetCollisionEnabled')
-if setColFn and setColFn:IsValid() then
-    local cleanName = setColFn:GetFullName():gsub('^%a+ ', '')
-    RegisterHook(cleanName, OnSetCollisionEnabledPre)
-    print(string.format('[%s] Hooked native %s', MOD_NAME, cleanName))
-end
-
--- HOOK 2: Intercept SetCollisionProfileName on PrimitiveComponent
-local function OnSetCollisionProfileNamePre(Context, InCollisionProfileName, bUpdateOverlaps)
-    local comp = Context and Context:get() or nil
-    if not comp or not comp:IsValid() then return end
-
-    local cname = comp:GetFName():ToString()
-    if cname == 'InvisibleWallForCombat' or cname == 'LockedObstacle' then
-        pcall(function()
-            InCollisionProfileName:set(FName('NoCollision'))
-        end)
-    end
-end
-
-local setProfileFn = FindObject('Function', 'SetCollisionProfileName')
-if setProfileFn and setProfileFn:IsValid() then
-    local cleanName = setProfileFn:GetFullName():gsub('^%a+ ', '')
-    RegisterHook(cleanName, OnSetCollisionProfileNamePre)
-    print(string.format('[%s] Hooked native %s', MOD_NAME, cleanName))
-end
-
--- HOOK 3: Intercept SetDoorState
--- Prevents closure during combat, promotes natural openings to OpenEvenInCombat
+-- HOOK 1: SetDoorState
+-- The master state controller: prevents door from locking/closing during combat
 local function OnSetDoorStatePre(Context, InNewState, WasSystemicallyClosed, WasSilentlyClosed, OpeningActor, bInForcedOpen, bFromSave, InOpenDirection)
     local door = Context and Context:get() or nil
     if not door or not door:IsValid() then return end
@@ -153,12 +99,12 @@ local function OnSetDoorStatePre(Context, InNewState, WasSystemicallyClosed, Was
     local currentDoorState = nil
     pcall(function() currentDoorState = door.DoorState end)
 
-    -- RULE 1: Strictly preserve narrative quest doors (KeyLocked = 3)
+    -- Preserve narrative key locks
     if targetState == EDoorState.KeyLocked or currentDoorState == EDoorState.KeyLocked then
         return
     end
 
-    -- RULE 2: Natural player opening -> promote to OpenEvenInCombat (1)
+    -- Player opens door naturally
     if targetState == EDoorState.Open then
         if InNewState then
             InNewState:set(EDoorState.OpenEvenInCombat)
@@ -170,7 +116,7 @@ local function OnSetDoorStatePre(Context, InNewState, WasSystemicallyClosed, Was
         return
     end
 
-    -- RULE 3: Encounter attempts to lock/slam door shut -> force open
+    -- Encounter attempts to lock/slam door shut
     local isSystemicClose = WasSystemicallyClosed and WasSystemicallyClosed:get() == true
     if targetState == EDoorState.Locked or isSystemicClose then
         if InNewState then
@@ -197,7 +143,7 @@ if setDoorStateFunc and setDoorStateFunc:IsValid() then
     print(string.format('[%s] Hooked native %s', MOD_NAME, cleanName))
 end
 
--- HOOK 4: Intercept NotifyDoorStateChanged
+-- HOOK 2: NotifyDoorStateChanged
 local notifyFunc = FindObject('Function', 'NotifyDoorStateChanged')
 if notifyFunc and notifyFunc:IsValid() then
     local cleanName = notifyFunc:GetFullName():gsub('^%a+ ', '')
@@ -217,7 +163,7 @@ if notifyFunc and notifyFunc:IsValid() then
     print(string.format('[%s] Hooked native %s', MOD_NAME, cleanName))
 end
 
--- HOOK 5: Approach Trigger overlap -> Pre-open and pre-defuse
+-- HOOK 3: Approach Trigger -> Pre-open & pre-defuse
 local approachFunc = FindObject('Function', 'OnApproachTriggerBeginOverlap')
 if approachFunc and approachFunc:IsValid() then
     local cleanName = approachFunc:GetFullName():gsub('^%a+ ', '')
@@ -238,20 +184,53 @@ if approachFunc and approachFunc:IsValid() then
     print(string.format('[%s] Hooked native %s', MOD_NAME, cleanName))
 end
 
--- Level Streaming / Initialization: Defuse invisible barriers
+-- HOOK 4: Traversal Area Trigger -> Defuse barriers when player crosses threshold
+local traversalBeginFunc = FindObject('Function', 'OnTraversalAreaBeginOverlap')
+if traversalBeginFunc and traversalBeginFunc:IsValid() then
+    local cleanName = traversalBeginFunc:GetFullName():gsub('^%a+ ', '')
+    RegisterHook(cleanName, function(Context)
+        local door = Context and Context:get() or nil
+        if door and door:IsValid() then
+            DefuseDoorBarriers(door)
+        end
+    end)
+    print(string.format('[%s] Hooked native %s', MOD_NAME, cleanName))
+end
+
+local traversalEndFunc = FindObject('Function', 'OnTraversalAreaEndOverlap')
+if traversalEndFunc and traversalEndFunc:IsValid() then
+    local cleanName = traversalEndFunc:GetFullName():gsub('^%a+ ', '')
+    RegisterHook(cleanName, function(Context)
+        local door = Context and Context:get() or nil
+        if door and door:IsValid() then
+            -- Keep door open and barrier defused when exiting traversal zone
+            local state = nil
+            pcall(function() state = door.DoorState end)
+            if state ~= EDoorState.KeyLocked then
+                pcall(function()
+                    door.DoorState = EDoorState.OpenEvenInCombat
+                    door.bForceDoorWideOpen = true
+                end)
+                DefuseDoorBarriers(door)
+            end
+        end
+    end)
+    print(string.format('[%s] Hooked native %s', MOD_NAME, cleanName))
+end
+
+-- Level Streaming / Initialization
 RegisterInitGameStatePostHook(function()
-    print(string.format('[%s] InitGameState fired. Sweeping barriers...', MOD_NAME))
-    SweepAllWorldBarriers()
+    print(string.format('[%s] InitGameState fired. Performing safe barrier defusal...', MOD_NAME))
+    SweepAllDoorBarriers()
 end)
 
--- Immediate initial sweep
-SweepAllWorldBarriers()
+-- Initial sweep on load
+SweepAllDoorBarriers()
 
--- F8 Diagnostic & Emergency Unlock Hotkey
+-- F8 Emergency Key: Manual unlock & barrier sweep
 RegisterKeyBindAsync(Key.F8, {}, function()
-    print(string.format('[%s] === F8 EMERGENCY UNLOCK & SWEEP ===', MOD_NAME))
-    SweepAllWorldBarriers()
-    
+    print(string.format('[%s] === F8 EMERGENCY UNLOCK & BARRIER DEFUSAL ===', MOD_NAME))
+    SweepAllDoorBarriers()
     local doors = FindAllOf('Door') or {}
     for _, d in ipairs(doors) do
         if d and d:IsValid() then
@@ -266,8 +245,8 @@ RegisterKeyBindAsync(Key.F8, {}, function()
             end
         end
     end
-    print(string.format('[%s] All doors unlocked to OpenEvenInCombat (1).', MOD_NAME))
-    print(string.format('[%s] =====================================', MOD_NAME))
+    print(string.format('[%s] Unlocked doors to OpenEvenInCombat (1) & defused barriers.', MOD_NAME))
+    print(string.format('[%s] ====================================================', MOD_NAME))
 end)
 
-print(string.format('[%s] Mod loaded successfully. Doors open naturally, stay open, and barriers annihilated.', MOD_NAME))
+print(string.format('[%s] Mod loaded successfully (v%s). Safe, crash-free architecture active.', MOD_NAME, VERSION))

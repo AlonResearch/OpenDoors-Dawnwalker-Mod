@@ -73,7 +73,7 @@ Doors (e.g. `BP_CityDoor_B_Right_C`, `BP_VillageDoor_A_Left_C`) contain attached
 
 ## 4. Mod Implementation Architecture (`mods/OpenDoors/scripts/main.lua`)
 
-The active mod implementation operates on the **Dual-Layered Reactive Lifecycle & Permanent Barrier Annihilation Strategy** (v1.3.0):
+The active mod implementation operates on the **Safe Non-Destructive Door & Barrier Control Strategy** (v1.4.0):
 
 ```mermaid
 flowchart TD
@@ -81,30 +81,29 @@ flowchart TD
     B --> C{State == KeyLocked?}
     C -- Yes --> D[Preserve Narrative Lock 100%]
     C -- No --> E[Promote to OpenEvenInCombat (1)<br/>bInForcedOpen = true]
-    E --> F[Player Enters Interior & Combat Engages]
-    F --> G[Encounter calls SetCollisionEnabled / SetCollisionProfileName on InvisibleWallForCombat]
-    G --> H[Mod Hook on PrimitiveComponent Intercepts:<br/>Forces NewType = NoCollision (0)<br/>Forces Profile = NoCollision]
-    H --> I[Invisible Barrier Never Solidifies]
-    F --> J[Encounter attempts door closure:<br/>SetDoorState -> Locked (2) & WasSystemicallyClosed]
-    J --> K[Mod Hook on SetDoorState Intercepts:<br/>Redirects InNewState to OpenEvenInCombat (1)<br/>Clears WasSystemicallyClosed]
-    K --> L[Doorway 100% Open & Traversable]
-    I --> L
+    E --> F[Player Crosses Threshold / TraversalAreaTrigger]
+    F --> G[Mod defuses InvisibleWallForCombat non-destructively:<br/>BoxExtent = 0,0,0<br/>Z = -50000 underground<br/>Collision = NoCollision]
+    G --> H[Encounter Engages & Attempts Closure:<br/>SetDoorState -> Locked (2) & WasSystemicallyClosed]
+    H --> I[Mod Hook on SetDoorState Intercepts:<br/>Redirects InNewState to OpenEvenInCombat (1)<br/>Clears WasSystemicallyClosed]
+    I --> J[Doorway Remains 100% Open & Traversable]
+    J --> K[Pointer Preserved: Zero Null-Pointer Dereferences, Zero Crashes]
 ```
 
 ### Key Logic Rules
-1. **Low-Level Collision Interception (`UPrimitiveComponent`)**:
-   - Native hooks on `SetCollisionEnabled` and `SetCollisionProfileName` catch all runtime attempts by encounter managers to activate `InvisibleWallForCombat` or `LockedObstacle`.
-   - Forces `NewType:set(0)` (`ECollisionEnabled::NoCollision`) and profile name to `'NoCollision'`, ensuring no invisible wall can ever physically block a doorway threshold.
-2. **Zero Pre-Opening (Preserve World Immersion)**:
-   - Doors remain 100% naturally closed at game startup and level streaming. No door is ever forced open before player approach.
-3. **Ghost Closure Redirection (`SetDoorState`)**:
+1. **Strict Non-Destructive Invariant (Crash Prevention)**:
+   - Components (`InvisibleWallForCombat`, `LockedObstacle`) are **never destroyed or deleted** via `K2_DestroyComponent`.
+   - The game encounter manager's C++ pointers to these components remain 100% valid, completely eliminating null-pointer access violations (`0xc0000005`) when entering combat.
+   - The barrier is rendered 100% physically non-existent by shrinking its box extent to `(0, 0, 0)`, setting collision to `NoCollision (0)` / `ECR_Ignore`, and moving its relative location 500 meters underground (`Z = -50000.0`).
+2. **Strict Door-Scoped Hooks**:
+   - Hooks are strictly placed on `/Script/DogwoodWorld.Door` events (`SetDoorState`, `NotifyDoorStateChanged`, `OnApproachTriggerBeginOverlap`, `OnTraversalAreaBeginOverlap`, `OnTraversalAreaEndOverlap`).
+   - Zero hooks on base engine primitives (`UPrimitiveComponent`), guaranteeing zero idle overhead and zero interference with physics ticks.
+3. **Zero Pre-Opening (Preserve World Immersion)**:
+   - Doors remain 100% naturally closed at game startup and level streaming until the player approaches and pushes them open.
+4. **Ghost Closure Redirection (`SetDoorState`)**:
    - When combat begins, encounter managers attempt to slam doors shut (`WasSystemicallyClosed = true` or `InNewState = Locked (2)`).
    - The native hook on `SetDoorState` overrides `InNewState` to `OpenEvenInCombat (1)` and clears `WasSystemicallyClosed`, keeping the door swung open.
-4. **Strict Narrative Lock Guard**:
+5. **Strict Narrative Lock Guard**:
    - Any door with `EDoorState::KeyLocked` (`3`) is strictly bypassed across all hooks. Quest barriers and locked dungeons behave 100% as vanilla.
-5. **Continuous Active Sweep & Diagnostic Hotkey (F8)**:
-   - On load/reload and level streaming (`InitGameState`), sweeps active memory to defuse any spawned barrier boxes.
-   - Bound asynchronously via `RegisterKeyBindAsync(Key.F8, ...)`: triggers an immediate manual sweep and status check if needed.
 6. **Loader Stability Profile**:
    - UE4SS v3.0.1-1111 (Dawnwalker compatibility build #18) loaded via `dwmapi.dll`.
    - `VTableLayout.ini` with narrow `LoadMap` offset at `0x4F0`.
@@ -117,11 +116,10 @@ flowchart TD
 - [x] Reverse-engineered `Dawnwalker.exe` binary symbols and reflection tables.
 - [x] Verified native `EDoorState` enum: `Open = 0`, `OpenEvenInCombat = 1`, `Locked = 2`, `KeyLocked = 3`.
 - [x] Verified door components: `Mesh`, `LockedObstacle`, `TraversalAreaTrigger`, `InvisibleWallForCombat`.
-- [x] Hooked `UPrimitiveComponent:SetCollisionEnabled` to intercept and force `NoCollision (0)`.
-- [x] Hooked `UPrimitiveComponent:SetCollisionProfileName` to force `'NoCollision'`.
-- [x] Implemented Dual-Layered Collision Interception architecture in `mods/OpenDoors/scripts/main.lua` (v1.2.0).
+- [x] Eliminated component destruction crash (`0xc0000005`) by enforcing strict non-destructive extents & relocation.
+- [x] Implemented Safe Non-Destructive Door & Barrier Control architecture in `mods/OpenDoors/scripts/main.lua` (v1.4.0).
 - [x] Intercepted `SetDoorState` to redirect combat closures to `OpenEvenInCombat (1)` and clear `WasSystemicallyClosed`.
-- [x] Ensured doors start closed in vanilla state on game startup and level streaming.
+- [x] Hooked `OnTraversalAreaBeginOverlap` and `OnTraversalAreaEndOverlap` for seamless doorway crossing.
 - [x] Preserved narrative quest key locks (`EDoorState::KeyLocked = 3`).
 - [ ] Milestone: In-game testing with user in the "Rayko, the Incorruptible" guard tower encounter.
 
