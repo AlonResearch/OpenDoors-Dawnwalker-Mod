@@ -30,6 +30,7 @@ Ensure that doors remain in their natural state and never close or lock themselv
 | **Developer** | Rebel Wolves Sp. z o.o. |
 | **Executable** | `game/Dawnwalker/Binaries/Win64/Dawnwalker.exe` (`Dawnwalker-Win64-Shipping.exe`) |
 | **Runtime Loader** | UE4SS v3.0.1 (Experimental UE 5.5 build) loaded via `dwmapi.dll` |
+| **Loader Profile** | Safe mode: `GuiConsoleEnabled=0`, `ConsoleEnabled=0`, `bUseUObjectArrayCache=false` |
 | **Active Mod Location** | `mods/OpenDoors/scripts/main.lua` (linked to `game/Dawnwalker/Binaries/Win64/ue4ss/Mods/OpenDoors`) |
 | **Door Utility Library**| `DogwoodBlueprintFunctionLibrary` |
 | **Door Triggers** | `DoorTrigger`, `SecondWingDoorTrigger` |
@@ -100,10 +101,10 @@ flowchart TD
    - This prevents the encounter manager from forcing the door into a locked state, keeping the door open, unblocking collision, and leaving the push-to-open `DoorTrigger` active.
 3. **Open Promotion**:
    - If `InNewState == EDoorState.Open` (1), the hook promotes it to `OpenEvenInCombat` (3), informing the engine's state machine that this door should never auto-close if combat ensues.
-4. **Zero-Polling & Performance Guarantee**:
-   - **No Watchers / No Polling**: Zero `Tick` callbacks, zero continuous distance scanners, and zero background threads.
-   - **Strictly Event-Driven**: The Lua script is dormant 99.999% of the time and executes *only* for a few microseconds when the native C++ engine explicitly invokes `SetDoorState`.
-   - **Zero Idle CPU Overhead**: Consumes 0 CPU cycles during regular gameplay, exploration, and combat.
+4. **Loader Stability Profile**:
+   - Disabled all default C++ mods (`KismetDebuggerMod`, `EventViewerMod`, etc.) which conflict with UE 5.5 Kismet bytecode.
+   - Disabled DirectX 12 ImGui overlay hook (`GuiConsoleEnabled = 0`) to avoid conflicts with simultaneous XeSS, DLSS, and AMD FidelityFX Frame Generation.
+   - Set `bUseUObjectArrayCache = false` to eliminate GUObjectArray race conditions during early engine startup.
 
 ---
 
@@ -113,7 +114,7 @@ flowchart TD
 - [x] Discovered native `EDoorState::OpenEvenInCombat` enum.
 - [x] Identified `DogwoodBlueprintFunctionLibrary::SetDoorState` and `WasSystemicallyClosed` mechanic.
 - [x] Deployed UE4SS v3.0.1 (Experimental UE 5.5 build) via `dwmapi.dll` into `game/Dawnwalker/Binaries/Win64/`.
+- [x] Hardened UE4SS settings (safe headless mode, disabled default C++ hooks, disabled DX12 overlay).
 - [x] Created `mods/OpenDoors/scripts/main.lua` and linked via junction to UE4SS Mods.
-- [x] Verified narrative key-lock guard (`EDoorState.KeyLocked = 5`) to preserve legitimate quest doors.
-- [x] Verified zero-polling, purely event-driven execution profile.
+- [x] Verified narrative key-lock guard (`EDoorState.KeyLocked = 5`).
 - [ ] Milestone: In-game testing with user in the "Rayko, the Incorruptible" guard tower encounter.
