@@ -43,22 +43,37 @@ Even if you pushed the door open yourself and no guard bolted it shut, you are a
 
 ## 📦 Installation
 
-1. **Install UE4SS**:
-   - Ensure UE4SS is installed in `Dawnwalker/Binaries/Win64/ue4ss/`.
-2. **Copy the Mod**:
-   - Place the `OpenDoors` folder into your UE4SS mods directory:
+### Method A: Direct Extract (Recommended & Foolproof)
+1. **Locate your game folder**:
+   - In Steam: Right-click **The Blood of Dawnwalker** -> **Manage** -> **Browse local files**.
+2. **Extract the ZIP**:
+   - Extract the contents of `OpenDoors-v1.0.0.zip` directly into your game folder.
+   - The files will automatically extract to:
      ```
-     Dawnwalker/Binaries/Win64/ue4ss/Mods/OpenDoors/
+     <GameRoot>/Dawnwalker/Binaries/Win64/ue4ss/Mods/OpenDoors/
      ├── scripts/
      │   └── main.lua
+     ├── enabled.txt
+     └── README_INSTALL.txt
      ```
-3. **Enable the Mod**:
-   - Open `Dawnwalker/Binaries/Win64/ue4ss/Mods/mods.txt` and ensure the following line is present:
-     ```
-     OpenDoors : 1
-     ```
-4. **Launch the Game**:
-   - Play! Doors will now behave naturally.
+3. **Done!** Because `enabled.txt` is included, UE4SS automatically enables and loads OpenDoors on game launch.
+
+### Method B: Manual Installation
+1. Install **UE4SS** (v3.0+) into `<GameRoot>/Dawnwalker/Binaries/Win64/ue4ss/`.
+2. Copy the `OpenDoors` folder into `<GameRoot>/Dawnwalker/Binaries/Win64/ue4ss/Mods/`.
+3. *(Optional)* If not using `enabled.txt`, open `ue4ss/Mods/mods.txt` in a text editor and add:
+   ```text
+   OpenDoors : 1
+   ```
+4. Launch the game and enjoy open doors!
+
+### 🔍 How to Verify It's Working
+1. Push open any door leading into an encounter (e.g. guard tower in *"Rayko, the Incorruptible"*).
+2. When combat starts, the door will stay swung open, and you can freely walk or roll back outside through the threshold into the courtyard.
+3. Check `<GameRoot>/Dawnwalker/Binaries/Win64/ue4ss/UE4SS.log` for:
+   ```text
+   [Lua] [OpenDoors] Mod loaded successfully (v1.0.0). Zero-polling Chaos physics neutralization active.
+   ```
 
 ---
 
