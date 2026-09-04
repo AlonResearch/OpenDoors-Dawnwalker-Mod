@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.6.0] - 2026-09-04
+
+### Fixed
+- **Multi-Tier Chaos Physics Scene Neutralization**:
+  - Identified that direct Lua UProperty modifications (`comp.RelativeLocation.Z = -50000.0`, `comp.BoxExtent.X = 0`) updated UObject properties in reflection but did not notify the Unreal Engine 5 Chaos Physics scene, leaving the cached physics collision body active in the doorway threshold.
+  - Resolved by invoking native engine physics methods:
+    - `comp:K2_SetRelativeLocation({ X = 0.0, Y = 0.0, Z = -50000.0 }, false, {}, false)` (physically relocated physics body 500m underground to `Z = -31155.9`).
+    - `comp:SetBoxExtent({ X = 0.0, Y = 0.0, Z = 0.0 }, false)` (collapsed active collision shape to zero).
+    - `comp:SetCollisionProfileName(FName('NoCollision'), false)` and `comp:SetCollisionEnabled(0)`.
+    - `comp:SetCollisionResponseToAllChannels(0)`, `comp:SetCollisionResponseToChannel(2, 0)` (`ECC_Pawn` -> `ECR_Ignore`), and `comp:SetCollisionResponseToChannel(1, 0)` (`ECC_WorldDynamic` -> `ECR_Ignore`).
+- **Door Leaf (`Mesh`) Collision Snag Resolution**:
+  - Configured the door leaf `Mesh` (`StaticMeshComponent`, default `BlockAllWithoutClimb` / `Col=3`) to ignore `ECC_Pawn` (`comp:SetCollisionResponseToChannel(2, 0)`) when the door is opened.
+  - Ensures the player never snags or catches on the physical wooden door leaf when retreating through the open doorway into the courtyard.
+
 ## [1.5.0] - 2026-09-04
 
 ### Fixed

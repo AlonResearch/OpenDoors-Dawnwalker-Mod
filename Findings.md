@@ -44,17 +44,23 @@ Inspecting `BP_CityDoor_B_Right_C` in live memory revealed its full component hi
 * **Cause:** The encounter manager in C++ holds a direct pointer to `door->InvisibleWallForCombat`. Dereferencing the deleted component caused a fatal null-pointer exception.
 * **Invariant:** Components must **never be deleted/destroyed**.
 
-### C. Why the Invisible Wall Returned
-* In `v1.4.0`, after removing `K2_DestroyComponent`, the crash stopped completely, but the invisible wall returned because the encounter manager re-asserts collision on `InvisibleWallForCombat` when combat begins.
+### C. Why the Invisible Wall Persisted After Property Writes
+* In `v1.5.0`, setting `comp.RelativeLocation.Z = -50000.0` and `comp.BoxExtent.X = 0` via direct reflection table writes modified the UProperty values on the UObject, but did **not** notify Unreal Engine 5 Chaos Physics to update the registered physics body.
+* In Chaos Physics, an already-registered `UBoxComponent` caches its collision shape and world transform matrix (`ComponentToWorld`). Without calling native engine physics functions (`K2_SetRelativeLocation`, `SetBoxExtent`, `SetCollisionEnabled`), the collision box remains in the active physics scene at the doorway threshold.
+* Furthermore, the wooden door leaf (`Mesh`) carries `BlockAllWithoutClimb` (`Col=3`). Even when swung open, its collision hull can clip or snag on the player pawn's collision capsule.
 
 ---
 
-## 4. Resolution Strategy
+## 4. Resolution Strategy (v1.6.0: Chaos Physics Neutralization)
 
-1. **Keep Pointer Valid (Zero Crashes):** Do not delete `InvisibleWallForCombat`.
-2. **Eliminate Physical Footprint:**
-   - Override `SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore)` and `SetCollisionResponseToAllChannels(ECR_Ignore)`.
-   - Set box extents to `(0, 0, 0)` so it has zero volume.
-   - Relocate its position underground (`Z = -50000.0`).
-3. **Intercept State Re-Activation:**
-   - Intercept the combat encounter trigger when it attempts to activate the barrier or close the door.
+1. **Keep Pointer Valid (Zero Crashes):** Do not delete `InvisibleWallForCombat` or `LockedObstacle` (`K2_DestroyComponent` strictly forbidden).
+2. **Active Engine Chaos Physics Neutralization:**
+   - Call `K2_SetRelativeLocation({ X = 0.0, Y = 0.0, Z = -50000.0 }, false, {}, false)` to physically relocate the Chaos physics body 500 meters underground (verified: moved to `Z = -31155.9`, 500m away).
+   - Call `SetBoxExtent({ X = 0.0, Y = 0.0, Z = 0.0 }, false)` to zero the active collision shape (verified: `Extent = 0,0,0`).
+   - Call `SetCollisionProfileName(FName('NoCollision'), false)` and `SetCollisionEnabled(0)`.
+   - Call `SetCollisionResponseToAllChannels(0)` and `SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore)`.
+3. **Door Leaf Pawn Pass-Through:**
+   - When the door is in an open state, set `Mesh:SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore)` so the wooden door wing can never obstruct or catch the player's retreat.
+4. **Reactive Lifecycle Hooks:**
+   - All 5 native door functions (`SetDoorState`, `NotifyDoorStateChanged`, `OnApproachTriggerBeginOverlap`, `OnTraversalAreaBeginOverlap`, `OnTraversalAreaEndOverlap`) reactively enforce barrier defusal and `OpenEvenInCombat (1)`.
+
