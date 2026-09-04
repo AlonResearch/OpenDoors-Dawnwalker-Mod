@@ -49,23 +49,22 @@ Analysis of baseline gameplay footage:
 
 ---
 
-## 4. Modding Architecture & Strategy
+## 4. Architecture & Update-Resilient Philosophy
 
-### Primary Approach: Runtime Reflection Hooking (UE4SS)
-- **Mechanism**: Inject an Unreal Engine reflection hook via a proxy DLL (e.g. `dwmapi.dll` or `dxgi.dll`) in `game/Dawnwalker/Binaries/Win64/`.
-- **Advantages**:
-  - No need to unpack, decrypt, or repackage 43+ GB of AES-encrypted IoStore containers.
-  - Directly inspects live `UObject` and `UFunction` hierarchies in memory.
-  - Intercepts door closure and locking functions via lightweight Lua / C++ hooks.
-  - Keeps doors interactive from both sides without breaking game updates.
+To ensure the mod survives subsequent game patches without breaking, we adhere to a **Native Primitives First** architecture:
 
-### Secondary Approach: IoStore Asset Patching
-- Extract the AES-256 key from process memory, unpack the relevant blueprint/level assets, edit the event graph, and stage a high-priority `.pak`/`.ucas` override chunk. Maintained as fallback if reflection hooks conflict with engine updates.
+### Update-Resilience Principles
+1. **Zero Fragile Offsets**: Avoid raw memory addresses, assembly patch patterns (AOB), or compiler-dependent offsets.
+2. **Hook by High-Level Symbolic Names**: Utilize Unreal Engine's reflection system (`UClass`, `UFunction`, `FProperty`) to identify and bind to functions by string/FName. Reflection names remain stable across game patches.
+3. **Target Root Archetypes**:
+   - Target master base classes (e.g. `BP_DoorBase` or `ARebelDoor`) so all level instances inherit the modifications automatically.
+   - Adjust native actor properties (e.g. `bCanBeLocked`, `bAutoCloseOnTrigger`) or component collision profiles (`SetCollisionEnabled`) at initialization, letting the game's own engine handle physics and interactions naturally.
+4. **Non-Invasive Execution**: Rely on lightweight runtime state adjustments rather than destructive binary or 43+ GB container asset rewrites.
 
 ---
 
 ## 5. Current Active Implementation
 
-- **Repository Structure**: Established with zero machine-specific paths, relative `game/` junction, and strict agent rules.
+- **Repository Structure**: Established with zero machine-specific paths, relative `game/` junction, and update-resilient agent guidelines (`AGENTS.md`).
 - **Engine Verification**: Confirmed UE 5.5.4 binary profile and IoStore v8 encryption status.
-- **Current Milestone**: Phase 2 — Preparing reflection dumper / UE4SS integration in `game/Dawnwalker/Binaries/Win64/` to identify door actor classes and event signatures.
+- **Current Milestone**: Phase 2 — Preparing reflection dumper / UE4SS integration in `game/Dawnwalker/Binaries/Win64/` to identify root door actor classes, property flags, and collision components.

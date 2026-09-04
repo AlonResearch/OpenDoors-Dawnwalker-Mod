@@ -35,11 +35,11 @@ Minimal, essential operational guidelines for AI agents working in the **Open Do
 
 ---
 
-## 3. Game Environment Facts & Mod Discipline
+## 3. Resilience & Native Primitives Rule (Update-Proof Philosophy)
 
-- **Target Engine**: Unreal Engine 5.5.4 (`dw1-pc-256181-shipping-patch2-all-CL-256181`, Rebel Wolves).
-- **Executable**: `game/Dawnwalker/Binaries/Win64/Dawnwalker.exe`.
-- **Packaging Format**: IoStore v8 (`game/Dawnwalker/Content/Paks/Dawnwalker-Windows.*`), compressed (256 KB) and AES-256 encrypted.
-- **Reverse Engineering Rule**:
-  - Favor lightweight runtime hooks (e.g. UE4SS / reflection-based interception) over invasive asset repacking where possible.
-  - Never overwrite or delete original game files.
+- **Zero Brittle Memory Offsets**: Never rely on hardcoded memory addresses, assembly patch patterns (AOB), or compiler-specific function offsets that break when the game executable is updated or recompiled.
+- **Use the Game's Native Primitives**:
+  - Target the game's high-level engine primitives: the Unreal Engine reflection system (`UClass`, `UFunction`, `FProperty`), base actor properties (e.g. door lock flags, collision profiles), and native gameplay tags.
+  - Hook functions by symbolic name (`FName`) or manipulate base component properties rather than patching compiled code.
+- **Root-Level Archetype Target**: Target the master/parent door and encounter classes (e.g. `BP_DoorBase` or `ARebelDoor`) so all derived instances across the entire game world inherit the behavior naturally without per-level overrides.
+- **Non-Destructive Integrity**: Never overwrite, replace, or delete original game files.

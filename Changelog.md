@@ -16,6 +16,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.2] - 2026-09-04
+
+### Added
+- **Update-Resilient Engineering Standards**: Added explicit rules to `AGENTS.md` and `GroundTruth.md` establishing a "Native Primitives First" development philosophy:
+  - Banned brittle memory addresses, AOB pattern-scans, and compiler-dependent offsets.
+  - Standardized on high-level Unreal Engine reflection symbols (`FName`), root parent archetype targets, and native property manipulation (`bCanBeLocked`, collision profiles) to ensure forward compatibility across future game updates.
+
+---
+
 ## [0.1.1] - 2026-09-04
 
 ### Changed
