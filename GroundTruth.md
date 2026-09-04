@@ -73,7 +73,7 @@ Doors (e.g. `BP_CityDoor_B_Right_C`, `BP_VillageDoor_A_Left_C`) contain attached
 
 ## 4. Mod Implementation Architecture (`mods/OpenDoors/scripts/main.lua`)
  
-The active mod implementation operates on the **Complete Reactive Chaos Physics Neutralization & Safe Lifecycle Strategy** (v1.6.0):
+The active mod implementation operates on the **Complete Reactive Chaos Physics Neutralization & Safe Lifecycle Strategy** (v1.0.0 Release):
  
 ```mermaid
 flowchart TD
@@ -127,9 +127,10 @@ flowchart TD
 - [x] Created `Findings.md` documenting reverse-engineering conclusions and barrier mechanics.
 - [x] Discovered Chaos physics scene caching: native engine physics functions required to update Chaos bodies.
 - [x] Eliminated component destruction crash (`0xc0000005`) by enforcing strict non-destructive extents & relocation.
-- [x] Implemented multi-tier Chaos Physics Neutralization in `mods/OpenDoors/scripts/main.lua` (v1.6.0).
+- [x] Implemented multi-tier Chaos Physics Neutralization in `mods/OpenDoors/scripts/main.lua` (v1.0.0 Release).
 - [x] Implemented door leaf `Mesh` pawn pass-through (`ECC_Pawn` -> `ECR_Ignore`).
 - [x] Intercepted `SetDoorState` to redirect combat closures to `OpenEvenInCombat (1)` and clear `WasSystemicallyClosed`.
 - [x] Preserved narrative quest key locks (`EDoorState::KeyLocked = 3`).
 - [x] Live hot-reload verified in game (`0.18s` reload time, 44 world barriers neutralized).
+- [x] In-game test confirmed: wooden door remains open, invisible barrier removed, retreat through threshold verified.
 

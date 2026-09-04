@@ -1,5 +1,5 @@
 -- Open Doors Mod for The Blood of Dawnwalker
--- Architecture: Complete Reactive Chaos Physics Neutralization & Safe Lifecycle (v1.6.0)
+-- Architecture: Complete Reactive Chaos Physics Neutralization & Safe Lifecycle (v1.0.0)
 -- 100% Non-Destructive: Never destroys components, preventing null-pointer crashes (0xc0000005)
 -- Multi-Tier Chaos Neutralization:
 --   1. Re-locates physics body 500m underground via K2_SetRelativeLocation
@@ -9,8 +9,8 @@
 --   5. Makes wooden door leaf (Mesh) pass-through for player pawn to prevent threshold collision snags
 
 local MOD_NAME = 'OpenDoors'
-local VERSION = '1.6.0'
-print(string.format('[%s] Initializing version %s (Chaos Physics Neutralization)...', MOD_NAME, VERSION))
+local VERSION = '1.0.0'
+print(string.format('[%s] Initializing version %s (Chaos Physics Neutralization Release)...', MOD_NAME, VERSION))
 
 local EDoorState = {
     Open = 0,

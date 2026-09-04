@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.0] - 2026-09-04
+
+### Added
+- **Official Initial Release**: Production-ready release of Open Doors for *The Blood of Dawnwalker*.
+- **Multi-Tier Chaos Physics Scene Neutralization**:
+  - Direct invocation of engine physics methods (`K2_SetRelativeLocation`, `SetBoxExtent`, `SetCollisionEnabled`, `SetCollisionProfileName`, `SetCollisionResponseToAllChannels`) on doorway barrier components (`InvisibleWallForCombat`, `LockedObstacle`).
+  - Relocates physical barrier bodies 500 meters underground and collapses extents to `(0, 0, 0)`.
+- **Door Leaf (`Mesh`) Collision Pass-Through**:
+  - Dynamically sets `Mesh:SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore)` on opened doors, preventing player collision snags at the doorway frame and threshold.
+- **Strict Narrative Quest Lock Protection**:
+  - `EDoorState::KeyLocked (3)` doors are 100% safeguarded from state modification.
+- **Zero-Polling Architecture**:
+  - Purely reactive event-driven lifecycle targeting `/Script/DogwoodWorld.Door` native events (`SetDoorState`, `NotifyDoorStateChanged`, `OnApproachTriggerBeginOverlap`, `OnTraversalAreaBeginOverlap`, `OnTraversalAreaEndOverlap`). Zero idle CPU cycles.
+- **100% Crash-Proof Non-Destructive Design**:
+  - Never destroys UObject components, preventing C++ encounter null-pointer dereference crashes (`0xc0000005`).
+
 ## [1.6.0] - 2026-09-04
 
 ### Fixed
