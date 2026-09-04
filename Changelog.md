@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.5.0] - 2026-09-04
+
+### Fixed
+- **Direct Reflection Property Writes**:
+  - Discovered that passing Lua tables to engine functions (`SetBoxExtent`, `K2_SetRelativeLocation`) failed silently in UE4SS, leaving `BoxExtent` at its default `(6, 68, 110)` cm.
+  - Switched to direct C++ reflection property writes: `comp.RelativeLocation.Z = -50000.0`, `comp.BoxExtent = (0, 0, 0)`, and `comp.BodyInstance.CollisionEnabled = 0`.
+  - Created `Findings.md` with complete documentation of the door encounter mechanics, crash causes, and resolution.
+
 ## [1.4.0] - 2026-09-04
 
 ### Fixed
