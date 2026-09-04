@@ -1,4 +1,4 @@
-﻿================================================================================
+================================================================================
 Open Doors — The Blood of Dawnwalker Mod (v1.0.0)
 ================================================================================
 
@@ -11,7 +11,10 @@ REQUIREMENTS
 --------------------------------------------------------------------------------
 1. The Blood of Dawnwalker (Steam / PC)
 2. UE4SS (Unreal Engine 4/5 Scripting System)
-   - Available on Nexus Mods (e.g. Dawnwalker UE4SS) or official RE-UE4SS v3.0+
+   - Recommended (Game-Tuned): Dawnwalker UE4SS (Nexus Mod #18)
+     https://www.nexusmods.com/thebloodofdawnwalker/mods/18
+   - Upstream Official Project: RE-UE4SS v3.0+
+     https://github.com/UE4SS-RE/RE-UE4SS
 
 --------------------------------------------------------------------------------
 QUICK INSTALLATION (FOOLPROOF)

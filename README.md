@@ -37,7 +37,9 @@ Even if you pushed the door open yourself and no guard bolted it shut, you are a
 ## 🛠️ Requirements
 
 - **The Blood of Dawnwalker** (Steam / PC)
-- **UE4SS v3.0+** (Unreal Engine 4/5 Scripting System calibrated for *The Blood of Dawnwalker*)
+- **UE4SS (Unreal Engine 4/5 Scripting System)**:
+  - **Recommended (Game-Tuned):** [Dawnwalker UE4SS (Nexus Mod #18)](https://www.nexusmods.com/thebloodofdawnwalker/mods/18) — Pre-calibrated specifically for *The Blood of Dawnwalker* with narrow vtable offsets and game-specific signatures.
+  - **Official Project:** [RE-UE4SS on GitHub](https://github.com/UE4SS-RE/RE-UE4SS) — The upstream open-source UE4SS framework.
 
 ---
 
