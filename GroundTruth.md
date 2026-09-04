@@ -80,41 +80,47 @@ UDogwoodBlueprintFunctionLibrary::SetDoorState(
 
 ## 4. Mod Implementation Architecture (`mods/OpenDoors/scripts/main.lua`)
 
-The active mod implementation operates directly on `UDogwoodBlueprintFunctionLibrary::SetDoorState` through UE4SS reflection hooks:
+The active mod implementation operates on the **Promote-on-Open Native Lifecycle Strategy**:
 
 ```mermaid
 flowchart TD
-    A[Native SetDoorState Called] --> B{InNewState == KeyLocked (5)?}
-    B -- Yes --> C[Allow Normal Narrative Lock]
-    B -- No --> D{WasSystemicallyClosed == true?}
-    D -- Yes --> E[Intercept & Nullify Systemic Lock:<br/>WasSystemicallyClosed = false<br/>InNewState = OpenEvenInCombat (3)]
-    D -- No --> F{InNewState == Open (1)?}
-    F -- Yes --> G[Promote to OpenEvenInCombat (3)]
-    F -- No --> H[Execute Unchanged]
+    A[Door in World: Closed] -->|Player walks through / pushes| B[OnDoorStartedOpening / SetDoorState]
+    B --> C{State == KeyLocked?}
+    C -- Yes --> D[Preserve Narrative Quest Lock]
+    C -- No --> E[Promote to OpenEvenInCombat (3)<br/>Set bForceDoorWideOpen = true]
+    E --> F[Combat Encounter Triggers]
+    F --> G{Encounter Attempts Closure?}
+    G -- Yes: SetDoorState / OnDoorStartedClosing --> H[Mod Intercepts & Enforces OpenEvenInCombat]
+    H --> I[Door Remains Open & Traversable]
 ```
 
 ### Key Logic Rules
-1. **Narrative Key Lock Guard**:
-   - If `InNewState == EDoorState.KeyLocked` (5), the hook returns immediately without altering arguments. Quest gates, key-required doors, and story locks function untouched.
-2. **Systemic Closure Neutralization**:
-   - If `WasSystemicallyClosed == true`, the hook calls `WasSystemicallyClosed:set(false)` and `InNewState:set(EDoorState.OpenEvenInCombat)` (3).
-   - This prevents the encounter manager from forcing the door into a locked state, keeping the door open, unblocking collision, and leaving the push-to-open `DoorTrigger` active.
-3. **Open Promotion**:
-   - If `InNewState == EDoorState.Open` (1), the hook promotes it to `OpenEvenInCombat` (3), informing the engine's state machine that this door should never auto-close if combat ensues.
-4. **Loader Stability Profile**:
-   - Disabled all default C++ mods (`KismetDebuggerMod`, `EventViewerMod`, etc.) which conflict with UE 5.5 Kismet bytecode.
-   - Disabled DirectX 12 ImGui overlay hook (`GuiConsoleEnabled = 0`) to avoid conflicts with simultaneous XeSS, DLSS, and AMD FidelityFX Frame Generation.
-   - Set `bUseUObjectArrayCache = false` to eliminate GUObjectArray race conditions during early engine startup.
+1. **Promote-on-Open**:
+   - Closed and unvisited doors remain completely natural.
+   - The moment a player pushes through a door (`OnDoorStartedOpening` or `SetDoorState` -> `Open`), the mod marks it as opened and promotes its state to `EDoorState::OpenEvenInCombat` (`3`) with `bForceDoorWideOpen = true`.
+2. **Ghost Closure Neutralization**:
+   - When combat begins, encounter managers attempt to slam doors shut (`WasSystemicallyClosed = true` or `InNewState = Locked`).
+   - The mod intercepts `SetDoorState`, `OnDoorStartedClosing`, and `NotifyDoorStateChanged`, overriding the closure to `OpenEvenInCombat` (`3`) and clearing `WasSystemicallyClosed`.
+3. **Strict Narrative Lock Guard**:
+   - Any door with `EDoorState::KeyLocked` (`5`) is strictly bypassed across all hooks. Quest barriers and locked dungeons behave 100% as vanilla.
+4. **Emergency / Diagnostic Hotkey (F8)**:
+   - Bound asynchronously via `RegisterKeyBindAsync(Key.F8, ...)`:
+   - Dumps all door actors in memory to `UE4SS.log` with their current states, names, and whether they were opened.
+   - Frees any stuck door to `OpenEvenInCombat` without restarting the game.
+5. **Loader Stability Profile**:
+   - UE4SS v3.0.1-1111 (Dawnwalker compatibility build #18) loaded via `dwmapi.dll`.
+   - `VTableLayout.ini` with narrow `LoadMap` offset at `0x4F0`.
+   - Safe headless mode (`GuiConsoleEnabled = 0`, `ConsoleEnabled = 0`, `bUseUObjectArrayCache = false`).
 
 ---
 
 ## 5. Current Active Implementation
 
 - [x] Reverse-engineered `Dawnwalker.exe` binary symbols and reflection tables.
-- [x] Discovered native `EDoorState::OpenEvenInCombat` enum.
-- [x] Identified `DogwoodBlueprintFunctionLibrary::SetDoorState` and `WasSystemicallyClosed` mechanic.
-- [x] Deployed UE4SS v3.0.1 (Experimental UE 5.5 build) via `dwmapi.dll` into `game/Dawnwalker/Binaries/Win64/`.
-- [x] Hardened UE4SS settings (safe headless mode, disabled default C++ hooks, disabled DX12 overlay).
-- [x] Created `mods/OpenDoors/scripts/main.lua` and linked via junction to UE4SS Mods.
+- [x] Discovered native `EDoorState::OpenEvenInCombat` enum (`3`).
+- [x] Deployed community-verified Dawnwalker UE4SS build (#18) resolving startup crashes.
+- [x] Implemented Promote-on-Open native lifecycle architecture in `mods/OpenDoors/scripts/main.lua`.
+- [x] Multi-layered reactive hooks on `SetDoorState`, `OnDoorStartedOpening`, `OnDoorStartedClosing`, and `NotifyDoorStateChanged`.
+- [x] Added in-game F8 diagnostic and emergency unlock hotkey.
 - [x] Verified narrative key-lock guard (`EDoorState.KeyLocked = 5`).
 - [ ] Milestone: In-game testing with user in the "Rayko, the Incorruptible" guard tower encounter.

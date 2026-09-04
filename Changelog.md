@@ -14,6 +14,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Verify door push-to-open responsiveness during active combat.
 - Standalone release package script for players.
 
+## [0.3.0] - 2026-09-04
+
+### Added
+- **Promote-on-Open Native Lifecycle Architecture (`mods/OpenDoors/scripts/main.lua`)**:
+  - Unvisited and closed doors remain completely natural until the player traverses them.
+  - **Hook `OnDoorStartedOpening`**: The moment a player pushes through a door, the mod immediately sets `DoorState = OpenEvenInCombat (3)` and `bForceDoorWideOpen = true`.
+  - **Hook `OnDoorStartedClosing`**: Intercepts artificial combat closing attempts on opened doors and keeps them open.
+  - **Hook `NotifyDoorStateChanged`**: Prevents out-of-band transitions to `Locked (2)` on non-narrative doors.
+  - **Hook `SetDoorState`**: Comprehensive state override for `Locked (2)` and `WasSystemicallyClosed = true` to `OpenEvenInCombat (3)`.
+  - **Emergency & Diagnostic Hotkey (`F8`)**: Bound asynchronous keybind to log all door instances in active memory to `UE4SS.log` and unlock any non-key doors if stuck.
+  - **Strict Narrative Lock Protection**: Doors with `EDoorState::KeyLocked (5)` are 100% untouched across all hooks.
+
 ## [0.2.3] - 2026-09-04
 
 ### Added
